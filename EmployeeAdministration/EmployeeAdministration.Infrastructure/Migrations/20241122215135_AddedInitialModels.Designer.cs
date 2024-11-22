@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmployeeAdministration.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241122202923_AddedInitialModels")]
+    [Migration("20241122215135_AddedInitialModels")]
     partial class AddedInitialModels
     {
         /// <inheritdoc />
@@ -38,7 +38,8 @@ namespace EmployeeAdministration.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -48,7 +49,7 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Projects");
+                    b.ToTable("Project");
                 });
 
             modelBuilder.Entity("EmployeeAdministration.Domain.Entities.ProjectMember", b =>
@@ -69,7 +70,7 @@ namespace EmployeeAdministration.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.ToTable("ProjectMembers");
+                    b.ToTable("ProjectMember");
                 });
 
             modelBuilder.Entity("EmployeeAdministration.Domain.Entities.Role", b =>
@@ -136,11 +137,13 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasMaxLength(350)
+                        .HasColumnType("nvarchar(350)");
 
                     b.Property<bool>("IsCompleted")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -161,7 +164,7 @@ namespace EmployeeAdministration.Infrastructure.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Tasks");
+                    b.ToTable("Task");
                 });
 
             modelBuilder.Entity("EmployeeAdministration.Domain.Entities.User", b =>
@@ -213,8 +216,8 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("ProfilePicture")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -344,48 +347,38 @@ namespace EmployeeAdministration.Infrastructure.Migrations
 
             modelBuilder.Entity("EmployeeAdministration.Domain.Entities.ProjectMember", b =>
                 {
-                    b.HasOne("EmployeeAdministration.Domain.Entities.User", "Employee")
+                    b.HasOne("EmployeeAdministration.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EmployeeAdministration.Domain.Entities.Project", "Project")
+                    b.HasOne("EmployeeAdministration.Domain.Entities.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("EmployeeAdministration.Domain.Entities.Task", b =>
                 {
-                    b.HasOne("EmployeeAdministration.Domain.Entities.User", "AppointeeEmployee")
+                    b.HasOne("EmployeeAdministration.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("AppointeeEmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EmployeeAdministration.Domain.Entities.User", "AppointerEmployee")
+                    b.HasOne("EmployeeAdministration.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("AppointerEmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EmployeeAdministration.Domain.Entities.Project", "Project")
+                    b.HasOne("EmployeeAdministration.Domain.Entities.Project", null)
                         .WithMany()
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("AppointeeEmployee");
-
-                    b.Navigation("AppointerEmployee");
-
-                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>

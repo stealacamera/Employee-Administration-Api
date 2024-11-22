@@ -34,7 +34,7 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProfilePicture = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true),
+                    ProfilePicture = table.Column<string>(type: "nvarchar(400)", maxLength: 400, nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -57,18 +57,18 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Projects",
+                name: "Project",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Projects", x => x.Id);
+                    table.PrimaryKey("PK_Project", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -178,7 +178,7 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ProjectMembers",
+                name: "ProjectMember",
                 columns: table => new
                 {
                     ProjectId = table.Column<int>(type: "int", nullable: false),
@@ -188,23 +188,23 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ProjectMembers", x => new { x.ProjectId, x.EmployeeId });
+                    table.PrimaryKey("PK_ProjectMember", x => new { x.ProjectId, x.EmployeeId });
                     table.ForeignKey(
-                        name: "FK_ProjectMembers_AspNetUsers_EmployeeId",
+                        name: "FK_ProjectMember_AspNetUsers_EmployeeId",
                         column: x => x.EmployeeId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_ProjectMembers_Projects_ProjectId",
+                        name: "FK_ProjectMember_Project_ProjectId",
                         column: x => x.ProjectId,
-                        principalTable: "Projects",
+                        principalTable: "Project",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Tasks",
+                name: "Task",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -213,32 +213,32 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                     AppointeeEmployeeId = table.Column<int>(type: "int", nullable: false),
                     AppointerEmployeeId = table.Column<int>(type: "int", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true),
-                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(350)", maxLength: 350, nullable: true),
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Tasks", x => x.Id);
+                    table.PrimaryKey("PK_Task", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Tasks_AspNetUsers_AppointeeEmployeeId",
+                        name: "FK_Task_AspNetUsers_AppointeeEmployeeId",
                         column: x => x.AppointeeEmployeeId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Tasks_AspNetUsers_AppointerEmployeeId",
+                        name: "FK_Task_AspNetUsers_AppointerEmployeeId",
                         column: x => x.AppointerEmployeeId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Tasks_Projects_ProjectId",
+                        name: "FK_Task_Project_ProjectId",
                         column: x => x.ProjectId,
-                        principalTable: "Projects",
+                        principalTable: "Project",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.InsertData(
@@ -290,29 +290,29 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ProjectMembers_EmployeeId",
-                table: "ProjectMembers",
-                column: "EmployeeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Projects_Name",
-                table: "Projects",
+                name: "IX_Project_Name",
+                table: "Project",
                 column: "Name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Tasks_AppointeeEmployeeId",
-                table: "Tasks",
+                name: "IX_ProjectMember_EmployeeId",
+                table: "ProjectMember",
+                column: "EmployeeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Task_AppointeeEmployeeId",
+                table: "Task",
                 column: "AppointeeEmployeeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Tasks_AppointerEmployeeId",
-                table: "Tasks",
+                name: "IX_Task_AppointerEmployeeId",
+                table: "Task",
                 column: "AppointerEmployeeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Tasks_ProjectId",
-                table: "Tasks",
+                name: "IX_Task_ProjectId",
+                table: "Task",
                 column: "ProjectId");
         }
 
@@ -335,10 +335,10 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "ProjectMembers");
+                name: "ProjectMember");
 
             migrationBuilder.DropTable(
-                name: "Tasks");
+                name: "Task");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
@@ -347,7 +347,7 @@ namespace EmployeeAdministration.Infrastructure.Migrations
                 name: "AspNetUsers");
 
             migrationBuilder.DropTable(
-                name: "Projects");
+                name: "Project");
         }
     }
 }
