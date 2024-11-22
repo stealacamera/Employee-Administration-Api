@@ -1,0 +1,23 @@
+version: '3.4'
+
+services:
+  employeeadministration.api:
+    image: ${DOCKER_REGISTRY-}employeeadministrationapi
+    container_name: employeeadministration.api
+    build:
+      context: .
+      dockerfile: EmployeeAdministration.API/Dockerfile
+    ports:
+        - "5000:5000"
+        - "5001:5001"
+  
+  employeeadministration.database:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: employeeadministration.database
+    environment:
+        - ACCEPT_EULA=Y
+        - MSSQL_SA_PASSWORD=database_password_123
+    volumes:
+        - ./.containers/employeeadministration-db:/var/opt/mssql
+    ports:
+        - "5432:5432"
