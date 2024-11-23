@@ -1,5 +1,5 @@
-﻿using EmployeeAdministration.Domain.Entities;
-using Microsoft.AspNetCore.Identity;
+﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,5 +24,7 @@ public static class Startup
                 })
                 .AddRoles<Role>()
                 .AddEntityFrameworkStores<AppDbContext>();
+
+        services.AddScoped<IWorkUnit, WorkUnit>();
     }
 }

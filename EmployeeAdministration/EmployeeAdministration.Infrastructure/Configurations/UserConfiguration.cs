@@ -8,7 +8,7 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.Property(e => e.ProfilePicture)
+        builder.Property(e => e.ProfilePictureName)
                .HasMaxLength(400);
     }
 }

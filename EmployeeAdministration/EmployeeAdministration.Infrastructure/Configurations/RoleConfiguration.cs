@@ -12,10 +12,10 @@ internal class RoleConfiguration : IEntityTypeConfiguration<Role>
         var roles = Enum.GetValues<Roles>()
                         .Select(e => new Role
                         {
-                            Id = (sbyte)e,
+                            Id = (int)e,
                             ConcurrencyStamp = e.ToString(),
-                            Name = Enum.GetName(e)!,
-                            NormalizedName = Enum.GetName(e)!.ToUpper()
+                            Name = e.ToString(),
+                            NormalizedName = e.ToString().ToUpper()
                         })
                         .ToArray();
 

@@ -1,8 +1,10 @@
+using EmployeeAdministration.Application;
 using EmployeeAdministration.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.RegisterInfrastructure(builder.Configuration);
+builder.Services.RegisterApplication();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
