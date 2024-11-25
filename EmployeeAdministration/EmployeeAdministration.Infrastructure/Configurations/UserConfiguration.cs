@@ -10,5 +10,21 @@ internal class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.Property(e => e.ProfilePictureName)
                .HasMaxLength(400);
+
+        builder.Property(e => e.FirstName)
+               .IsRequired()
+               .HasMaxLength(100);
+
+        builder.Property(e => e.Surname)
+               .IsRequired()
+               .HasMaxLength(100);
+
+        builder.Property(e => e.Email)
+               .IsRequired();
+
+        builder.HasOne<Role>()
+               .WithMany()
+               .HasForeignKey(e => e.RoleId)
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -8,6 +8,7 @@ public interface IWorkUnit
     Task SaveChangesAsync();
     Task<IDbContextTransaction> BeginTransactionAsync();
 
+    IUsersRepository UsersRepository { get; }
     IProjectsRepository ProjectsRepository { get; }
     IProjectMembersRepository ProjectMembersRepository { get; }
     ITasksRepository TasksRepository { get; }

@@ -35,4 +35,29 @@ internal abstract class BaseService
             _asyncLock.Release();
         }
     }
+
+    protected async Task<T> WrapInTransactionAsync<T>(Func<Task<T>> asyncFunc)
+    {
+        await _asyncLock.WaitAsync();
+
+        using var transaction = await _workUnit.BeginTransactionAsync();
+        T result;
+
+        try
+        {
+            result = await asyncFunc();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+        finally
+        {
+            _asyncLock.Release();
+        }
+
+        return result;
+    }
 }

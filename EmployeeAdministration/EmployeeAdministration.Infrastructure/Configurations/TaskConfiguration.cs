@@ -42,12 +42,12 @@ internal class TaskConfiguration : IEntityTypeConfiguration<Task>
                .HasForeignKey(e => e.AppointeeEmployeeId)
                .OnDelete(DeleteBehavior.Restrict);
 
-        builder.Property(e => e.AppointerEmployeeId)
+        builder.Property(e => e.AppointerUserId)
                .IsRequired();
 
         builder.HasOne<User>()
                .WithMany()
-               .HasForeignKey(e => e.AppointerEmployeeId)
+               .HasForeignKey(e => e.AppointerUserId)
                .OnDelete(DeleteBehavior.Restrict);
     }
 }

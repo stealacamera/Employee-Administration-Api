@@ -9,4 +9,6 @@ public class User : IdentityUser<int>
 
     public string? ProfilePictureName { get; set; }
     public DateTime? DeletedAt { get; set; }
+
+    public int RoleId { get; set; }
 }

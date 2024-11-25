@@ -14,8 +14,8 @@ internal class ProjectConfiguration : IEntityTypeConfiguration<Project>
                .IsRequired()   
                .HasMaxLength(150);
 
-        builder.HasIndex(e => e.Name)
-               .IsUnique();
+        builder.Property(e => e.Description)
+               .HasMaxLength(400);
 
         builder.Property(e => e.CreatedAt)
                .IsRequired();

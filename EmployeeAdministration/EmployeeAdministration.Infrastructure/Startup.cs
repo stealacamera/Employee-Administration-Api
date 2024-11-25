@@ -1,5 +1,7 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Domain.Entities;
+using EmployeeAdministration.Infrastructure.Options;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +27,20 @@ public static class Startup
                 .AddRoles<Role>()
                 .AddEntityFrameworkStores<AppDbContext>();
 
+        // Should both jwt + cookies be used? or exclusively one?
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.SaveToken = true;
+                    options.MapInboundClaims = false;
+                });
+
+        services.AddAuthorization();
+        
+        services.ConfigureOptions<JwtOptionsSetup>();
+
+        services.AddScoped<IJwtProvider, JwtProvider>();
+        services.ConfigureOptions<JwtBearerOptionsSetup>();
         services.AddScoped<IWorkUnit, WorkUnit>();
     }
 }

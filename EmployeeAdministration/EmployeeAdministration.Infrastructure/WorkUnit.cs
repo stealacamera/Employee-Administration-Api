@@ -16,10 +16,8 @@ internal class WorkUnit : IWorkUnit
     public async Task SaveChangesAsync()
         => await _dbContext.SaveChangesAsync();
 
-    public Task<IDbContextTransaction> BeginTransactionAsync()
-    {
-        throw new NotImplementedException();
-    }
+    public async Task<IDbContextTransaction> BeginTransactionAsync()
+        => await _dbContext.Database.BeginTransactionAsync();
 
     private IProjectsRepository _projectsRepository = null!;
     public IProjectsRepository ProjectsRepository

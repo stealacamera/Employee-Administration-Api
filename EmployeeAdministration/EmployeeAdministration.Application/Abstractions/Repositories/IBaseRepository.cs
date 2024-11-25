@@ -2,7 +2,7 @@
 
 namespace EmployeeAdministration.Application.Abstractions.Repositories;
 
-public interface IBaseRepository<TEntity>
+public interface IBaseRepository<TEntity> 
     where TEntity : BaseEntity
 {
     System.Threading.Tasks.Task AddAsync(TEntity entity, CancellationToken cancellationToken = default);

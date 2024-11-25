@@ -1,79 +1,160 @@
-﻿using EmployeeAdministration.Application.Abstractions.Interfaces;
+﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Application.Abstractions.Interfaces;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Domain.Enums;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EmployeeAdministration.Application.Services;
 
 internal class UsersService : BaseService, IUsersService
 {
-    private readonly UserManager<Domain.Entities.User> _userManager;
+    private readonly IJwtProvider _jwtProvider;
 
     public UsersService(IServiceProvider serviceProvider) : base(serviceProvider)
-        => _userManager = serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>();
+        => _jwtProvider = serviceProvider.GetRequiredService<IJwtProvider>();
 
     public async Task<User> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var existingEmail = await _userManager.FindByEmailAsync(request.Email);
-
         // Check if the email is currently in use
-        if (existingEmail != null && existingEmail.DeletedAt == null)
+        if(await _workUnit.UsersRepository
+                          .IsEmailInUseAsync(request.Password, cancellationToken: cancellationToken))
             throw new ValidationException("Email is in use by an existing account");
 
-        var newUser = new Domain.Entities.User
+        return await WrapInTransactionAsync(async () =>
         {
-            Email = request.Email,
-            EmailConfirmed = true,
-            FirstName = request.FirstName,
-            Surname = request.LastName,
-            ProfilePictureName = request.ProfilePicture?.Name // TODO add service helper for media
-        };
+            // Create user
+            var newUser = new Domain.Entities.User
+            {
+                UserName = request.Email,
+                Email = request.Email,
+                EmailConfirmed = true,
+                FirstName = request.FirstName,
+                Surname = request.LastName,
+                ProfilePictureName = request.ProfilePicture?.Name // TODO add service helper for media
+            };
 
-        var result = await _userManager.CreateAsync(newUser, request.Password);
+            await _workUnit.UsersRepository
+                           .AddAsync(newUser, request.Password, cancellationToken);
 
-        if (!result.Succeeded)
-            throw new ValidationException(GroupIdentityErrors(result.Errors));
+            // Attach role to new user
+            await _workUnit.UsersRepository
+                           .AddToRoleAsync(newUser, request.Role, cancellationToken);
 
-        return new User(newUser.Id, newUser.Email, newUser.FirstName, newUser.Surname);
+            return new User(
+                newUser.Id, newUser.Email, 
+                newUser.FirstName, newUser.Surname, request.Role);
+        });
     }
 
-    public async Task DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async System.Threading.Tasks.Task DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _workUnit.UsersRepository
+                                  .GetByIdAsync(userId, cancellationToken);
 
         if (user == null || user.DeletedAt != null)
             throw new EntityNotFoundException(nameof(User));
 
-        // If user is an employee:
-        // Check if there are open tasks assigned to user
-        // Remove memberships from projects
-        bool isUserEmployee = await _userManager.IsInRoleAsync(user, nameof(Roles.Employee));
+        // If user is an employee, check if there are open tasks assigned to user
+        bool isUserEmployee = await _workUnit.UsersRepository
+                                             .IsUserInRoleAsync(user, Roles.Employee, cancellationToken);
 
         if(isUserEmployee && await _workUnit.TasksRepository
-                                            .DoesUserHaveOpenTasksAsync(userId, cancellationToken))
+                                            .DoesUserHaveOpenTasksAsync(userId, cancellationToken: cancellationToken))
             throw new UncompletedTasksAssignedToEntityException(nameof(User));
 
+        // Delete user & associated entities
         await WrapInTransactionAsync(async () =>
         {
             if(isUserEmployee)
             {
                 await _workUnit.ProjectMembersRepository
-                               .DeleteAllMembershipsForUserAsync(userId, cancellationToken);
+                               .DeleteAllForUserAsync(userId, cancellationToken);
                 
                 await _workUnit.SaveChangesAsync();
             }
 
+            user.ProfilePictureName = null; // TODO delete pfp file 
             user.DeletedAt = DateTime.UtcNow;
+
             await _workUnit.SaveChangesAsync();
         });
     }
 
-    public async Task<User> UpdateUserAsync(UpdateUserRequest request, CancellationToken cancellationToken = default)
+    public async Task<IList<User>> GetAllAsync(int requesterId, CancellationToken cancellationToken = default)
     {
-        var requester = await _userManager.FindByIdAsync(request.RequesterId.ToString());
-        var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+        var requester = await _workUnit.UsersRepository
+                                       .GetByIdAsync(requesterId);
+
+        if (requester == null)
+            throw new UnauthorizedException();
+
+        // Restrict result if requester is not administrator
+        // Get only currently employeed employees
+        bool isRequesterAdmin = await _workUnit.UsersRepository
+                                               .IsUserInRoleAsync(requester, Roles.Administrator, cancellationToken);
+
+        var users = await _workUnit.UsersRepository
+                                   .GetAllAsync(
+                                        includeDeletedUsers: isRequesterAdmin, 
+                                        filterByRole: !isRequesterAdmin ? Roles.Employee : null,
+                                        cancellationToken);
+
+        return users.Select(async e => 
+                    {
+                        var userRole = await _workUnit.UsersRepository
+                                                .GetUserRoleAsync(e, cancellationToken);
+
+                        return new User(
+                            e.Id, e.Email,
+                            e.FirstName, e.Surname,
+                            userRole, e.ProfilePictureName, e.DeletedAt);
+                    })
+                    .Select(e => e.Result)
+                    .ToList();
+    }
+
+    public async Task<bool> DoesUserEmailExistAsync(
+        string email, 
+        bool includeDeletedEntities = false,
+        CancellationToken cancellationToken = default)
+        => await _workUnit.UsersRepository
+                          .IsEmailInUseAsync(email, includeDeletedEntities, cancellationToken);
+
+    public async Task<UserProfile> GetProfileByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var user = await _workUnit.UsersRepository
+                                  .GetByIdAsync(id, cancellationToken);
+
+        if (user == null || user.DeletedAt != null)
+            throw new EntityNotFoundException(nameof(User));
+
+        var userRole = await _workUnit.UsersRepository
+                                      .GetUserRoleAsync(user, cancellationToken);
+
+        var userModel = new User(
+            user.Id, user.Email, user.FirstName, user.Surname, 
+            userRole, user.ProfilePictureName);
+
+        var membershipProjectIds = (await _workUnit.ProjectMembersRepository
+                                         .GetAllForUserAsync(user.Id, cancellationToken))
+                                         .Select(e => e.ProjectId)
+                                         .ToArray();
+
+        var projects = await _workUnit.ProjectsRepository
+                                      .GetAllByIdsAsync(membershipProjectIds, cancellationToken);
+
+        return new UserProfile(userModel, ConvertProjects(projects, userModel, cancellationToken));
+    }
+
+    public async Task<User> UpdateUserAsync(
+        int requesterId, 
+        int userId, 
+        UpdateUserRequest request, 
+        CancellationToken cancellationToken = default)
+    {
+        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken);
+        var user = await _workUnit.UsersRepository.GetByIdAsync(userId, cancellationToken);
 
         if (requester == null || requester.DeletedAt != null)
             throw new UnauthorizedException();
@@ -81,8 +162,10 @@ internal class UsersService : BaseService, IUsersService
             throw new EntityNotFoundException(nameof(User));
 
         // Check if the user is an employee, they're updating themselves
-        if (await _userManager.IsInRoleAsync(requester, nameof(Roles.Employee)) && 
-            requester.Id != request.UserId)
+        bool isUserEmployee = await _workUnit.UsersRepository
+                                             .IsUserInRoleAsync(requester, Roles.Employee, cancellationToken);
+        
+        if (isUserEmployee && requester.Id != userId)
             throw new UnauthorizedException();
 
         // Update user profile
@@ -94,44 +177,87 @@ internal class UsersService : BaseService, IUsersService
             ; // TODO
 
         await _workUnit.SaveChangesAsync();
-        return new User(user.Id, user.Email!, user.FirstName, user.Surname);
+
+        var userRole = await _workUnit.UsersRepository
+                                      .GetUserRoleAsync(user, cancellationToken);
+
+        return new User(
+            user.Id, user.Email!, 
+            user.FirstName, user.Surname,
+            userRole, user.ProfilePictureName);
     }
 
-    public async Task<bool> VerifyCredentialsAsync(VerifyCredentialsRequest request, CancellationToken cancellationToken = default)
+    public async Task<LoggedInUser?> VerifyCredentialsAsync(
+        VerifyCredentialsRequest request, 
+        CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email);
+        var user = await _workUnit.UsersRepository
+                                  .GetByEmailAsync(request.Email, cancellationToken);
 
         if (user == null || user.DeletedAt != null)
             throw new EntityNotFoundException(nameof(User));
 
-        return await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!await _workUnit.UsersRepository
+                            .VerifyCredentialsAsync(user, request.Password, cancellationToken))
+            return null;
+
+        var userRole = await _workUnit.UsersRepository
+                                      .GetUserRoleAsync(user, cancellationToken);
+
+        return new LoggedInUser(
+            new User(user.Id, user.Email, user.FirstName, user.Surname, userRole, user.ProfilePictureName),
+            new Tokens(_jwtProvider.GenerateToken(user.Id, user.Email), _jwtProvider.GenerateRefreshToken()));
     }
 
-    private Dictionary<string, string[]> GroupIdentityErrors(IEnumerable<IdentityError> errors)
+    // Helper functions
+    private IList<Project> ConvertProjects(
+        IEnumerable<Domain.Entities.Project> models,
+        User user,
+        CancellationToken cancellationToken)
     {
-        var groupedErrors = new Dictionary<string, string[]>();
+        return models.Select(async e =>
+                    {
+                        var tasks = await _workUnit.TasksRepository
+                                                   .GetAllForUserAsync(user.Id, e.Id, cancellationToken);
 
-        foreach (var error in errors)
+                        var taskModels = tasks.Select(async e => await ConvertTaskAsync(e, user, cancellationToken))
+                                              .Select(e => e.Result)
+                                              .ToList();
+
+                        return new Project(e.Id, e.Name, taskModels);
+                    })
+                     .Select(e => e.Result)
+                     .ToList();
+    }
+
+    private async Task<Common.DTOs.Task> ConvertTaskAsync(
+        Domain.Entities.Task model, 
+        User appointee, 
+        CancellationToken cancellationToken)
+    {
+        User? appointer = null;
+
+        // Add appointer user if the task isn't self-assigned
+        if (model.AppointeeEmployeeId != model.AppointerUserId)
         {
-            string errorTitle;
+            var appointerEntity = await _workUnit.UsersRepository
+                                                 .GetByIdAsync(model.AppointerUserId, cancellationToken);
 
-            if (error.Code.Contains("Password"))
-                errorTitle = "Password";
-            else if (error.Code.Contains("Role"))
-                errorTitle = "Role";
-            else if (error.Code.Contains("UserName"))
-                errorTitle = "Username";
-            else if (error.Code.Contains("Email"))
-                errorTitle = "Email";
-            else
-                errorTitle = "Other";
+            if (appointerEntity == null)
+                throw new EntityNotFoundException(nameof(User));
 
-            if (groupedErrors.ContainsKey(errorTitle))
-                groupedErrors[errorTitle].Append(error.Description);
-            else
-                groupedErrors.Add(errorTitle, [error.Description]);
+            var appointerRole = await _workUnit.UsersRepository
+                                          .GetUserRoleAsync(appointerEntity, cancellationToken);
+
+            appointer = new User(
+                appointerEntity.Id, appointerEntity.Email,
+                appointerEntity.FirstName, appointerEntity.Surname,
+                appointerRole, appointerEntity.ProfilePictureName);
         }
 
-        return groupedErrors;
+        return new Common.DTOs.Task(
+            model.Id, appointer, appointee,
+            model.Name, model.IsCompleted,
+            model.CreatedAt, model.Description);
     }
 }
