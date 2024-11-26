@@ -1,6 +1,7 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Application.Abstractions.Services;
 using EmployeeAdministration.Domain.Entities;
-using EmployeeAdministration.Infrastructure.Options;
+using EmployeeAdministration.Infrastructure.Options.Setups;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,9 +39,12 @@ public static class Startup
         services.AddAuthorization();
         
         services.ConfigureOptions<JwtOptionsSetup>();
+        services.ConfigureOptions<CloudinaryOptionsSetup>();
 
         services.AddScoped<IJwtProvider, JwtProvider>();
         services.ConfigureOptions<JwtBearerOptionsSetup>();
+        
+        services.AddScoped<IImagesService, ImagesService>();
         services.AddScoped<IWorkUnit, WorkUnit>();
     }
 }

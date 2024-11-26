@@ -1,4 +1,5 @@
-﻿using EmployeeAdministration.Domain.Enums;
+﻿using EmployeeAdministration.Application.Common.Validation;
+using EmployeeAdministration.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
@@ -17,7 +18,7 @@ public record User(
     [Required, StringLength(ValidationUtils.UserNameLength)] string FirstName, 
     [Required, StringLength(ValidationUtils.UserNameLength)] string LastName,
     [Required] Roles Role,
-    string? ProfilePictureName = null,
+    [Url] string? ProfilePictureUrl = null,
     DateTime? DeletedAt = null);
 
 public record UserProfile(
@@ -38,7 +39,7 @@ public record CreateUserRequest(
     [Required, StringLength(ValidationUtils.UserNameLength)] string FirstName,
     [Required, StringLength(ValidationUtils.UserNameLength)] string LastName, 
     [Required, StringLength(ValidationUtils.UserPasswordLength)] string Password, 
-    [FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)] IFormFile? ProfilePicture = null);
+    [MaxFileSize(ValidationUtils.MaxImageSize), FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)] IFormFile? ProfilePicture = null);
 
 public record UpdateUserRequest
 {
@@ -48,6 +49,7 @@ public record UpdateUserRequest
     [StringLength(ValidationUtils.UserNameLength)]
     public string? LastName { get; private set; } = null;
 
+    [MaxFileSize(ValidationUtils.MaxImageSize)]
     [FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)]
     public IFormFile? ProfilePicture { get; private set; } = null;
 

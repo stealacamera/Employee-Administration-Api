@@ -1,4 +1,5 @@
 ﻿using EmployeeAdministration.Application.Common.DTOs;
+using EmployeeAdministration.Domain.Enums;
 
 namespace EmployeeAdministration.Application.Abstractions.Interfaces;
 
@@ -9,7 +10,8 @@ public interface IUsersService
         CancellationToken cancellationToken = default);
 
     Task<IList<User>> GetAllAsync(
-        int requesterId, 
+        Roles? filterByRole = null,
+        bool includeDeletedUsers = false,
         CancellationToken cancellationToken = default);
 
     Task<bool> DoesUserEmailExistAsync(

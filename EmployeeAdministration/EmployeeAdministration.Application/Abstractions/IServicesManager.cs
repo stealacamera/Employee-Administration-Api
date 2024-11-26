@@ -8,4 +8,5 @@ public interface IServicesManager
     IUsersService UsersService { get; }
     IProjectsService ProjectsService { get; }
     IProjectMembersService ProjectMembersService { get; }
+    ITasksService TasksService { get; }
 }

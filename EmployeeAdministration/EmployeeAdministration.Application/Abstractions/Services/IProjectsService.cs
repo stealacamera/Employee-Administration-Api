@@ -5,7 +5,7 @@ namespace EmployeeAdministration.Application.Abstractions.Services;
 
 public interface IProjectsService
 {
-    Task<ComprehensiveProject> GetByIdAsync(int id, CancellationToken cancellationToken);
+    Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken);
 
     Task<ComprehensiveProject> CreateAsync(CreateProjectRequest request, CancellationToken cancellationToken = default);
     Task<BriefProject> UpdateAsync(int id, UpdateProjectRequest request, CancellationToken cancellationToken = default);

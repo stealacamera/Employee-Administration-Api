@@ -1,18 +1,26 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Abstractions.Interfaces;
+using EmployeeAdministration.Application.Abstractions.Services;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Domain.Enums;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EmployeeAdministration.Application.Services;
 
 internal class UsersService : BaseService, IUsersService
 {
     private readonly IJwtProvider _jwtProvider;
+    private readonly IImagesService _imagesService;
 
-    public UsersService(IServiceProvider serviceProvider) : base(serviceProvider)
-        => _jwtProvider = serviceProvider.GetRequiredService<IJwtProvider>();
+    public UsersService(
+        IWorkUnit workUnit, 
+        IJwtProvider jwtProvider, 
+        IImagesService imagesService) 
+        : base(workUnit)
+    {
+        _jwtProvider = jwtProvider;
+        _imagesService = imagesService;
+    }
 
     public async Task<User> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
@@ -21,30 +29,46 @@ internal class UsersService : BaseService, IUsersService
                           .IsEmailInUseAsync(request.Password, cancellationToken: cancellationToken))
             throw new ValidationException("Email is in use by an existing account");
 
-        return await WrapInTransactionAsync(async () =>
-        {
-            // Create user
-            var newUser = new Domain.Entities.User
+        string? profilePictureId = null;
+
+        return await WrapInTransactionAsync(
+            async () =>
             {
-                UserName = request.Email,
-                Email = request.Email,
-                EmailConfirmed = true,
-                FirstName = request.FirstName,
-                Surname = request.LastName,
-                ProfilePictureName = request.ProfilePicture?.Name // TODO add service helper for media
-            };
+                if (request.ProfilePicture != null)
+                    profilePictureId = await _imagesService.SaveFileAsync(request.ProfilePicture, cancellationToken);
 
-            await _workUnit.UsersRepository
-                           .AddAsync(newUser, request.Password, cancellationToken);
+                // Create user
+                var newUser = new Domain.Entities.User
+                {
+                    UserName = request.Email,
+                    Email = request.Email,
+                    EmailConfirmed = true,
+                    FirstName = request.FirstName,
+                    Surname = request.LastName,
+                    ProfilePictureName = profilePictureId
+                };
 
-            // Attach role to new user
-            await _workUnit.UsersRepository
-                           .AddToRoleAsync(newUser, request.Role, cancellationToken);
+                await _workUnit.UsersRepository
+                               .AddAsync(newUser, request.Password, cancellationToken);
 
-            return new User(
-                newUser.Id, newUser.Email, 
-                newUser.FirstName, newUser.Surname, request.Role);
-        });
+                // Attach role to new user
+                await _workUnit.UsersRepository
+                               .AddToRoleAsync(newUser, request.Role, cancellationToken);
+
+                string? profilePictureUrl = profilePictureId != null ? 
+                                            await _imagesService.GetFileUrlAsync(profilePictureId, cancellationToken) : 
+                                            null;
+
+                return new User(
+                    newUser.Id, newUser.Email, 
+                    newUser.FirstName, newUser.Surname, 
+                    request.Role, profilePictureUrl);
+            }, 
+            async () =>
+            {
+                if(profilePictureId != null)
+                    await _imagesService.DeleteFileAsync(profilePictureId, cancellationToken);
+            });
     }
 
     public async System.Threading.Tasks.Task DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
@@ -74,41 +98,37 @@ internal class UsersService : BaseService, IUsersService
                 await _workUnit.SaveChangesAsync();
             }
 
-            user.ProfilePictureName = null; // TODO delete pfp file 
+            if(user.ProfilePictureName != null)
+                await _imagesService.DeleteFileAsync(user.ProfilePictureName, cancellationToken);
+
+            user.ProfilePictureName = null;
             user.DeletedAt = DateTime.UtcNow;
 
             await _workUnit.SaveChangesAsync();
         });
     }
 
-    public async Task<IList<User>> GetAllAsync(int requesterId, CancellationToken cancellationToken = default)
+    public async Task<IList<User>> GetAllAsync(
+        Roles? filterByRole = null,
+        bool includeDeletedUsers = false, 
+        CancellationToken cancellationToken = default)
     {
-        var requester = await _workUnit.UsersRepository
-                                       .GetByIdAsync(requesterId);
-
-        if (requester == null)
-            throw new UnauthorizedException();
-
-        // Restrict result if requester is not administrator
-        // Get only currently employeed employees
-        bool isRequesterAdmin = await _workUnit.UsersRepository
-                                               .IsUserInRoleAsync(requester, Roles.Administrator, cancellationToken);
-
         var users = await _workUnit.UsersRepository
-                                   .GetAllAsync(
-                                        includeDeletedUsers: isRequesterAdmin, 
-                                        filterByRole: !isRequesterAdmin ? Roles.Employee : null,
-                                        cancellationToken);
+                                   .GetAllAsync(includeDeletedUsers, filterByRole, cancellationToken);
 
         return users.Select(async e => 
                     {
                         var userRole = await _workUnit.UsersRepository
                                                 .GetUserRoleAsync(e, cancellationToken);
 
+                        var profilePictureUrl = e.ProfilePictureName != null ? 
+                                                await _imagesService.GetFileUrlAsync(e.ProfilePictureName, cancellationToken) : 
+                                                null;
+
                         return new User(
                             e.Id, e.Email,
                             e.FirstName, e.Surname,
-                            userRole, e.ProfilePictureName, e.DeletedAt);
+                            userRole, profilePictureUrl, e.DeletedAt);
                     })
                     .Select(e => e.Result)
                     .ToList();
@@ -132,19 +152,28 @@ internal class UsersService : BaseService, IUsersService
         var userRole = await _workUnit.UsersRepository
                                       .GetUserRoleAsync(user, cancellationToken);
 
+        var profilePictureId = user.ProfilePictureName != null ?
+                               await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
+                               null;
+
         var userModel = new User(
             user.Id, user.Email, user.FirstName, user.Surname, 
-            userRole, user.ProfilePictureName);
+            userRole, profilePictureId);
+
+        var briefUser = new BriefUser(user.Id, user.Email, user.FirstName, user.Surname, user.DeletedAt);
 
         var membershipProjectIds = (await _workUnit.ProjectMembersRepository
-                                         .GetAllForUserAsync(user.Id, cancellationToken))
-                                         .Select(e => e.ProjectId)
-                                         .ToArray();
+                                                   .GetAllForUserAsync(user.Id, cancellationToken))
+                                                   .Select(e => e.ProjectId)
+                                                   .ToArray();
 
-        var projects = await _workUnit.ProjectsRepository
-                                      .GetAllByIdsAsync(membershipProjectIds, cancellationToken);
+        var projects = (await _workUnit.ProjectsRepository
+                                       .GetAllByIdsAsync(membershipProjectIds, cancellationToken))
+                                       .Select(async e => await ConvertProjectToModelAsync(e, briefUser, cancellationToken))
+                                       .Select(e => e.Result)
+                                       .ToList();
 
-        return new UserProfile(userModel, ConvertProjects(projects, userModel, cancellationToken));
+        return new UserProfile(userModel, projects);
     }
 
     public async Task<User> UpdateUserAsync(
@@ -174,17 +203,24 @@ internal class UsersService : BaseService, IUsersService
         if(request.LastName != null)
             user.Surname = request.LastName;
         if (request.ProfilePicture != null)
-            ; // TODO
+        {
+            var profilePictureId = await _imagesService.SaveFileAsync(request.ProfilePicture, cancellationToken);
+            user.ProfilePictureName = profilePictureId;
+        }
 
         await _workUnit.SaveChangesAsync();
 
         var userRole = await _workUnit.UsersRepository
                                       .GetUserRoleAsync(user, cancellationToken);
 
+        var profilePictureUrl = user.ProfilePictureName != null ?
+                                await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
+                                null;
+
         return new User(
             user.Id, user.Email!, 
             user.FirstName, user.Surname,
-            userRole, user.ProfilePictureName);
+            userRole, profilePictureUrl);
     }
 
     public async Task<LoggedInUser?> VerifyCredentialsAsync(
@@ -204,38 +240,39 @@ internal class UsersService : BaseService, IUsersService
         var userRole = await _workUnit.UsersRepository
                                       .GetUserRoleAsync(user, cancellationToken);
 
+        var profilePictureUrl = user.ProfilePictureName != null ?
+                                await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
+                                null;
+
         return new LoggedInUser(
-            new User(user.Id, user.Email, user.FirstName, user.Surname, userRole, user.ProfilePictureName),
+            new User(user.Id, user.Email, user.FirstName, user.Surname, userRole, profilePictureUrl),
             new Tokens(_jwtProvider.GenerateToken(user.Id, user.Email), _jwtProvider.GenerateRefreshToken()));
     }
 
+
     // Helper functions
-    private IList<Project> ConvertProjects(
-        IEnumerable<Domain.Entities.Project> models,
-        User user,
+    private async Task<Project> ConvertProjectToModelAsync(
+        Domain.Entities.Project model,
+        BriefUser user,
         CancellationToken cancellationToken)
     {
-        return models.Select(async e =>
-                    {
-                        var tasks = await _workUnit.TasksRepository
-                                                   .GetAllForUserAsync(user.Id, e.Id, cancellationToken);
+        var tasks = await _workUnit.TasksRepository
+                                    .GetAllForUserAsync(user.Id, model.Id, cancellationToken);
 
-                        var taskModels = tasks.Select(async e => await ConvertTaskAsync(e, user, cancellationToken))
-                                              .Select(e => e.Result)
-                                              .ToList();
+        var taskModels = tasks.Select(async e => await ConvertTaskToModelAsync(e, user, cancellationToken))
+                                .Select(e => e.Result)
+                                .ToList();
 
-                        return new Project(e.Id, e.Name, taskModels);
-                    })
-                     .Select(e => e.Result)
-                     .ToList();
+        return new Project(model.Id, model.Name, taskModels);
+
     }
 
-    private async Task<Common.DTOs.Task> ConvertTaskAsync(
+    private async Task<Common.DTOs.Task> ConvertTaskToModelAsync(
         Domain.Entities.Task model, 
-        User appointee, 
+        BriefUser appointee, 
         CancellationToken cancellationToken)
     {
-        User? appointer = null;
+        BriefUser? appointer = null;
 
         // Add appointer user if the task isn't self-assigned
         if (model.AppointeeEmployeeId != model.AppointerUserId)
@@ -249,10 +286,9 @@ internal class UsersService : BaseService, IUsersService
             var appointerRole = await _workUnit.UsersRepository
                                           .GetUserRoleAsync(appointerEntity, cancellationToken);
 
-            appointer = new User(
+            appointer = new BriefUser(
                 appointerEntity.Id, appointerEntity.Email,
-                appointerEntity.FirstName, appointerEntity.Surname,
-                appointerRole, appointerEntity.ProfilePictureName);
+                appointerEntity.FirstName, appointerEntity.Surname);
         }
 
         return new Common.DTOs.Task(

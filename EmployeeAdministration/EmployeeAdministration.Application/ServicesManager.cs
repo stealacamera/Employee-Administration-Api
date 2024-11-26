@@ -1,5 +1,6 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Abstractions.Interfaces;
+using EmployeeAdministration.Application.Abstractions.Services;
 using EmployeeAdministration.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,8 +22,42 @@ internal class ServicesManager : IServicesManager
     {
         get
         {
-            _usersService ??= new UsersService(_serviceProvider);
+            _usersService ??= new UsersService(
+                                _workUnit, 
+                                _serviceProvider.GetRequiredService<IJwtProvider>(), 
+                                _serviceProvider.GetRequiredService<IImagesService>());
+
             return _usersService;
+        }
+    }
+
+    private IProjectsService _projectsService = null!;
+    public IProjectsService ProjectsService
+    {
+        get
+        {
+            _projectsService ??= new ProjectsService(_workUnit);
+            return _projectsService;
+        }
+    }
+
+    private IProjectMembersService _projectMembersService = null!;
+    public IProjectMembersService ProjectMembersService
+    {
+        get
+        {
+            _projectMembersService ??= new ProjectMembersService(_workUnit);
+            return _projectMembersService;
+        }
+    }
+
+    private ITasksService _tasksService = null!;
+    public ITasksService TasksService
+    {
+        get
+        {
+            _tasksService ??= new TasksService(_workUnit);
+            return _tasksService;
         }
     }
 }

@@ -12,26 +12,7 @@ namespace EmployeeAdministration.API.Controllers;
 public class UsersController : BaseController
 {
     public UsersController(IServicesManager servicesManager) : base(servicesManager) { }
-
-    // TODO add jwt
-    // TODO make password encrypted
-    [AllowAnonymous]
-    [HttpPost("login")]
-    public async Task<IActionResult> LoginAsync(VerifyCredentialsRequest request, CancellationToken cancellationToken)
-    {
-        var loggedinUser =  await _servicesManager.UsersService
-                                                  .VerifyCredentialsAsync(request, cancellationToken);
-
-        return loggedinUser != null ?
-               Ok(loggedinUser) : 
-               BadRequest(new ProblemDetails
-               {
-                   Title = "Invalid credentials",
-                   Detail = "Incorrect email and/or password",
-                   Status = StatusCodes.Status400BadRequest
-               });
-    }
-
+    
     [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpPost]
     public async Task<IActionResult> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken)
@@ -42,20 +23,15 @@ public class UsersController : BaseController
         return Created(string.Empty, newUser); 
     }
 
-    [HttpGet("profile")]
-    public async Task<IActionResult> GetUserProfileAsync(CancellationToken cancellationToken)
-    {
-        var profile = await _servicesManager.UsersService
-                                            .GetProfileByIdAsync(GetRequesterId(HttpContext), cancellationToken);
-        
-        return Ok(profile);
-    }
-
+    [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpGet]
-    public async Task<IActionResult> GetAllUsersAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAllUsersAsync(
+        CancellationToken cancellationToken,
+        Roles? filterByRole = null, 
+        bool includeDeletedUsers = false)
     {
         var users = await _servicesManager.UsersService
-                                          .GetAllAsync(GetRequesterId(HttpContext), cancellationToken);
+                                          .GetAllAsync(filterByRole, includeDeletedUsers, cancellationToken);
 
         return Ok(users);
     }

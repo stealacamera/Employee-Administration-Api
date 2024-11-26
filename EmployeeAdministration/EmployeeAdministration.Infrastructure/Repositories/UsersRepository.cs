@@ -47,7 +47,7 @@ internal class UsersRepository : IUsersRepository
             query = query.Where(e => e.DeletedAt != null);
 
         if (filterByRole != null)
-            query = query.Where(e => e.RoleId == (int)filterByRole);
+            query = query.Where(e => e.RolesIds.Contains((int)filterByRole));
 
         return await query.ToListAsync(cancellationToken);
     }

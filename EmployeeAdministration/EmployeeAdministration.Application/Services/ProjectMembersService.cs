@@ -8,7 +8,6 @@ namespace EmployeeAdministration.Application.Services;
 internal class ProjectMembersService : BaseService, IProjectMembersService
 {
     public ProjectMembersService(IWorkUnit workUnit) : base(workUnit) { }
-    public ProjectMembersService(IServiceProvider serviceProvider) : base(serviceProvider) { }
 
     public async Task<ProjectMember> AddEmployeeToProjectAsync(int employeeId, int projectId, CancellationToken cancellationToken = default)
     {

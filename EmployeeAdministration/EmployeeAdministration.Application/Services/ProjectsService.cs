@@ -9,9 +9,7 @@ namespace EmployeeAdministration.Application.Services;
 
 internal class ProjectsService : BaseService, IProjectsService
 {
-    public ProjectsService(IWorkUnit workUnit) : base(workUnit)
-    {
-    }
+    public ProjectsService(IWorkUnit workUnit) : base(workUnit) { }
 
     public async Task<ComprehensiveProject> CreateAsync(CreateProjectRequest request, CancellationToken cancellationToken = default)
     {
@@ -67,8 +65,24 @@ internal class ProjectsService : BaseService, IProjectsService
         });
     }
 
-    public async Task<ComprehensiveProject> GetByIdAsync(int id, CancellationToken cancellationToken)
+    public async Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken)
     {
+        // Check if requester is an employee
+        // If so, they need to be a member of the project
+        var requester = await _workUnit.UsersRepository
+                                       .GetByIdAsync(requesterId, cancellationToken);
+
+        if (requester == null)
+            throw new UnauthorizedException();
+        else if(!await _workUnit.UsersRepository
+                                .IsUserInRoleAsync(requester, Roles.Administrator, cancellationToken))
+        {
+            if (!await _workUnit.ProjectMembersRepository
+                                .IsUserMemberAsync(requesterId, id, cancellationToken))
+                throw new UnauthorizedException();
+        }
+
+        // Retrieve project
         var project = await _workUnit.ProjectsRepository.GetByIdAsync(id, cancellationToken);
 
         if(project == null)

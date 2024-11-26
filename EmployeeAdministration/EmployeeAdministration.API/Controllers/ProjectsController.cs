@@ -18,7 +18,7 @@ public class ProjectsController : BaseController
     public async Task<IActionResult> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         var project = await _servicesManager.ProjectsService
-                                            .GetByIdAsync(id, cancellationToken);
+                                            .GetByIdAsync(id, GetRequesterId(HttpContext), cancellationToken);
 
         return Ok(project);
     }
@@ -51,6 +51,8 @@ public class ProjectsController : BaseController
         return NoContent();
     }
 
+    // Project members
+
     [HttpPost("{projectId:int:min(1)}/members")]
     public async Task<IActionResult> AddEmployeeToProjectAsync(int projectId, int employeeId, CancellationToken cancellationToken)
     {
@@ -67,5 +69,25 @@ public class ProjectsController : BaseController
                               .RemoveEmployeeFromProjectAsync(userId, projectId, cancellationToken);
 
         return NoContent();
+    }
+
+    // Project tasks
+
+    [HttpGet("{id:int:min(1)}/tasks")]
+    public async Task<IActionResult> GetTasksForProjectAsync(int id, CancellationToken cancellationToken)
+    {
+        var tasks = await _servicesManager.TasksService
+                                          .GetAllForProjectAsync(GetRequesterId(HttpContext), id, cancellationToken);
+
+        return Ok(tasks);
+    }
+
+    [HttpPost("{id:int:min(1)}/tasks")]
+    public async Task<IActionResult> CreateTaskForProjectAsync(int id, [FromBody] CreateTaskRequest request, CancellationToken cancellationToken)
+    {
+        var newTask = await _servicesManager.TasksService
+                                            .CreateAsync(GetRequesterId(HttpContext), id, request, cancellationToken);
+
+        return Created(string.Empty, newTask);
     }
 }

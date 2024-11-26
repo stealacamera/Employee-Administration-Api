@@ -1,5 +1,4 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EmployeeAdministration.Application.Services;
 
@@ -9,12 +8,9 @@ internal abstract class BaseService
     protected readonly IWorkUnit _workUnit;
 
     protected BaseService(IWorkUnit workUnit)
-        => _workUnit = workUnit;
+        =>_workUnit = workUnit;
 
-    protected BaseService(IServiceProvider serviceProvider)
-        =>_workUnit = serviceProvider.GetRequiredService<IWorkUnit>();
-
-    protected async Task WrapInTransactionAsync(Func<Task> asyncFunc)
+    protected async Task WrapInTransactionAsync(Func<Task> asyncFunc, Func<Task>? onErrorFunc = null)
     {
         await _asyncLock.WaitAsync();
 
@@ -28,6 +24,10 @@ internal abstract class BaseService
         catch
         {
             await transaction.RollbackAsync();
+
+            if (onErrorFunc != null)
+                await onErrorFunc();
+
             throw;
         }
         finally
@@ -36,7 +36,7 @@ internal abstract class BaseService
         }
     }
 
-    protected async Task<T> WrapInTransactionAsync<T>(Func<Task<T>> asyncFunc)
+    protected async Task<T> WrapInTransactionAsync<T>(Func<Task<T>> asyncFunc, Func<Task>? onErrorFunc = null)
     {
         await _asyncLock.WaitAsync();
 
@@ -51,6 +51,10 @@ internal abstract class BaseService
         catch
         {
             await transaction.RollbackAsync();
+
+            if (onErrorFunc != null)
+                await onErrorFunc();
+
             throw;
         }
         finally

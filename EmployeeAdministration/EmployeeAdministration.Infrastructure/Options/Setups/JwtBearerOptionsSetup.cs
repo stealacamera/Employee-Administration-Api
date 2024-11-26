@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-namespace EmployeeAdministration.Infrastructure.Options;
+namespace EmployeeAdministration.Infrastructure.Options.Setups;
 
 internal class JwtBearerOptionsSetup : IConfigureNamedOptions<JwtBearerOptions>
 {

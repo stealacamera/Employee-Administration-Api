@@ -1,6 +1,7 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Abstractions.Repositories;
 using EmployeeAdministration.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,10 +9,14 @@ namespace EmployeeAdministration.Infrastructure;
 
 internal class WorkUnit : IWorkUnit
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly AppDbContext _dbContext;
 
     public WorkUnit(IServiceProvider serviceProvider)
-        => _dbContext = serviceProvider.GetRequiredService<AppDbContext>();
+    {
+        _serviceProvider = serviceProvider;
+        _dbContext = _serviceProvider.GetRequiredService<AppDbContext>();
+    }
 
     public async Task SaveChangesAsync()
         => await _dbContext.SaveChangesAsync();
@@ -46,6 +51,16 @@ internal class WorkUnit : IWorkUnit
         {
             _tasksRepository ??= new TasksRepository(_dbContext);
             return _tasksRepository;
+        }
+    }
+
+    private IUsersRepository _usersRepository = null!;
+    public IUsersRepository UsersRepository
+    {
+        get
+        {
+            _usersRepository ??= new UsersRepository(_serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>());
+            return _usersRepository;
         }
     }
 }
