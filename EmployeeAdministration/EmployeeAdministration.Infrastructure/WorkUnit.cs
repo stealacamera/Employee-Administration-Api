@@ -55,12 +55,12 @@ internal class WorkUnit : IWorkUnit
         }
     }
 
-    private IUsersRepository _usersRepository = null!;
-    public IUsersRepository UsersRepository
+    private Application.Abstractions.Repositories.IUsersRepository _usersRepository = null!;
+    public Application.Abstractions.Repositories.IUsersRepository UsersRepository
     {
         get
         {
-            _usersRepository ??= new UsersRepository(
+            _usersRepository ??= new Repositories.UsersRepository(
                 _serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>(),
                 _serviceProvider.GetRequiredService<IDistributedCache>());
             

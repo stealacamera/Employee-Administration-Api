@@ -15,6 +15,7 @@ internal class ExceptionHandlingMiddleware : IMiddleware
         { typeof(NotAProjectMemberException), (StatusCodes.Status400BadRequest, "Non-member user") },
         { typeof(UnauthorizedException), (StatusCodes.Status401Unauthorized, "Unauthorized") },
         { typeof(UncompletedTasksAssignedToEntityException), (StatusCodes.Status400BadRequest, "Unfinished tasks persisting") },
+        { typeof(InvalidPasswordException), (StatusCodes.Status400BadRequest, "Incorrect password") },
     };
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -36,6 +37,7 @@ internal class ExceptionHandlingMiddleware : IMiddleware
         }
         catch (Exception ex)
         {
+            Log.Error(ex, ex is BaseException ? "MISSING_ERROR_CODE_FOR_APP_EXCEPTION" : "API_ERROR");
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
             await context.Response.WriteAsJsonAsync(
@@ -44,8 +46,6 @@ internal class ExceptionHandlingMiddleware : IMiddleware
                     Title = "Server error",
                     Detail = "Something went wrong in the server"
                 });
-
-            Log.Error(ex, ex is BaseException ? "MISSING_ERROR_CODE_FOR_APP_EXCEPTION" : "API_ERROR");
         }
     }
 

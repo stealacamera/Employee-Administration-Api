@@ -36,4 +36,9 @@ public interface IUsersService
         int userId, 
         UpdateUserRequest request, 
         CancellationToken cancellationToken = default);
+
+    System.Threading.Tasks.Task UpdatePasswordAsync(
+        int requesterId,
+        UpdatePasswordRequest request,
+        CancellationToken cancellationToken = default);
 }

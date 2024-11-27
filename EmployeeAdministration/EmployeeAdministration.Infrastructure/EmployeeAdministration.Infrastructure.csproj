@@ -31,5 +31,5 @@
     <ProjectReference Include="..\EmployeeAdministration.Application\EmployeeAdministration.Application.csproj" />
     <ProjectReference Include="..\EmployeeAdministration.Domain\EmployeeAdministration.Domain.csproj" />
   </ItemGroup>
-
+	
 </Project>

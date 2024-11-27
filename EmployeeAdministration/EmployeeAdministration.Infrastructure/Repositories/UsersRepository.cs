@@ -25,7 +25,7 @@ internal class UsersRepository : IUsersRepository
         var result = await _userManager.CreateAsync(user, password);
 
         if (!result.Succeeded)
-            throw new ValidationException(GroupIdentityErrors(result.Errors));
+            throw new IdentityException(GroupIdentityErrors(result.Errors));
 
         return user;
     }
@@ -104,6 +104,9 @@ internal class UsersRepository : IUsersRepository
         return true;
     }
 
+    public async Task<bool> IsPasswordCorrectAsync(User user, string password, CancellationToken cancellationToken = default)
+        => await _userManager.CheckPasswordAsync(user, password);
+
     public async Task<bool> IsUserInRoleAsync(User user, Roles role, CancellationToken cancellationToken = default)
     {
         var cachedUserRole = await _distributedCache.GetStringAsync(CacheKeys.UserRole(user.Id), cancellationToken);
@@ -124,6 +127,14 @@ internal class UsersRepository : IUsersRepository
         return userRole == role;
     }
 
+    public async System.Threading.Tasks.Task UpdatePassword(User user, string oldPassword, string newPassword, CancellationToken cancellationToken = default)
+    {
+        var result = await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
+
+        if (!result.Succeeded)
+            throw new IdentityException(GroupIdentityErrors(result.Errors));
+    }
+
     public async Task<bool> VerifyCredentialsAsync(User user, string password, CancellationToken cancellationToken = default)
         => await _userManager.CheckPasswordAsync(user, password);
 
@@ -131,32 +142,4 @@ internal class UsersRepository : IUsersRepository
     // Helper functions
     private async Task<Roles> GetRoleAsync(User user, CancellationToken cancellationToken)
         => Enum.Parse<Roles>((await _userManager.GetRolesAsync(user))[0]);
-
-    private Dictionary<string, string[]> GroupIdentityErrors(IEnumerable<IdentityError> errors)
-    {
-        var groupedErrors = new Dictionary<string, string[]>();
-
-        foreach (var error in errors)
-        {
-            string errorTitle;
-
-            if (error.Code.Contains("Password"))
-                errorTitle = "Password";
-            else if (error.Code.Contains("Role"))
-                errorTitle = "Role";
-            else if (error.Code.Contains("UserName"))
-                errorTitle = "Username";
-            else if (error.Code.Contains("Email"))
-                errorTitle = "Email";
-            else
-                errorTitle = "Other";
-
-            if (groupedErrors.ContainsKey(errorTitle))
-                groupedErrors[errorTitle].Append(error.Description);
-            else
-                groupedErrors.Add(errorTitle, [error.Description]);
-        }
-
-        return groupedErrors;
-    }
 }

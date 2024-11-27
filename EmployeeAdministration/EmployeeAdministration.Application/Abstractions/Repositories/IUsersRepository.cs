@@ -21,4 +21,7 @@ public interface IUsersRepository
     Task<Roles> GetUserRoleAsync(User user, CancellationToken cancellationToken = default);
     Task AddToRoleAsync(User user, Roles role, CancellationToken cancellationToken = default);
     Task<bool> IsUserInRoleAsync(User user, Roles role, CancellationToken cancellationToken = default);
+
+    Task<bool> IsPasswordCorrectAsync(User user, string password, CancellationToken cancellationToken = default);
+    Task UpdatePassword(User user, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
 }

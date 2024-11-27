@@ -29,6 +29,16 @@ public class IdentityController : BaseController
                });
     }
 
+    [Authorize]
+    [HttpPost("password")]
+    public async Task<IActionResult> UpdatePassword(UpdatePasswordRequest request, CancellationToken cancellationToken)
+    {
+        await _servicesManager.UsersService
+                              .UpdatePasswordAsync(GetRequesterId(HttpContext), request, cancellationToken);
+
+        return Ok();
+    }
+
     [Authorize(Roles = nameof(Roles.Employee))]
     [HttpGet("profile")]
     public async Task<IActionResult> GetUserProfileAsync(CancellationToken cancellationToken)
