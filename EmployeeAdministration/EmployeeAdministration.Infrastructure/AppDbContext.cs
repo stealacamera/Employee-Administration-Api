@@ -21,20 +21,32 @@ public class AppDbContext : IdentityDbContext<User, Role, int>
     {
         base.OnModelCreating(modelBuilder);
 
+        AddUserRolesNavigation(modelBuilder);
+
         SeedRoles(modelBuilder);
         SeedProjectStatus(modelBuilder);
     }
 
+    private void AddUserRolesNavigation(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<User>()
+                    .HasMany(e => e.Roles)
+                    .WithOne()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Restrict);
+    }
+
     private void SeedProjectStatus(ModelBuilder modelBuilder)
     {
-        var statuses = Enum.GetValues<ProjectStatuses>()
-                            .Select((e, index) => new ProjectStatus
-                            {
-                                Id = (sbyte)(index + 1),
-                                Name = e.ToString(),
-                                Value = (sbyte)e
-                            })
-                            .ToArray();
+        var statuses = Domain.Enums.ProjectStatuses.List
+                                                   .Select(e => new ProjectStatus
+                                                   {
+                                                       Id = e.Id,
+                                                       Name = e.Name,
+                                                       Value = e.Value
+                                                   })
+                                                   .ToArray();
 
         modelBuilder.Entity<ProjectStatus>().HasData(statuses);
     }
