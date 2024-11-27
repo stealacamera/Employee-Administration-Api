@@ -60,6 +60,6 @@ public class TestProjectsService
     {
         await Assert.ThrowsAsync(
             exceptionExpected,
-            async () => await _service.GetByIdAsync(userId, projectId));
+            async () => await _service.GetByIdAsync(projectId, userId));
     }
 }
