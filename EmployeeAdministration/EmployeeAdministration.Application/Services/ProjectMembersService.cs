@@ -18,7 +18,7 @@ internal class ProjectMembersService : BaseService, IProjectMembersService
             throw new EntityNotFoundException(nameof(Project));
 
         // Only permit users that are employees and not apart of the project
-        if (user == null)
+        if (user == null || user.DeletedAt != null)
             throw new EntityNotFoundException(nameof(User));
         else if (await _workUnit.UsersRepository.IsUserInRoleAsync(user, Domain.Enums.Roles.Employee, cancellationToken))
             throw new NonEmployeeUserException();

@@ -4,12 +4,15 @@ using EmployeeAdministration.Infrastructure;
 using EmployeeAdministration.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Distributed;
+using Testcontainers.MsSql;
 using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Tests.Unit.Repositories;
 
 public class TestUsersRepository
 {
+    private readonly MsSqlContainer _dbContainer = new MsSqlBuilder().Build();
+
     private readonly AppDbContext _dbContext;
     private readonly UsersRepository _usersRepository;
 
@@ -25,14 +28,14 @@ public class TestUsersRepository
 
     private void SeedDummyData()
     {
-        var users = new[] { 
+        var users = new[] {
             (_employee, Roles.Employee, false),
             (_deletedEmployee, Roles.Employee, true),
             (_admin, Roles.Administrator, false),
-            (_deletedAdmin, Roles.Administrator, true) 
+            (_deletedAdmin, Roles.Administrator, true)
         };
 
-        for(int i = 0; i < users.Length; i++)
+        for (int i = 0; i < users.Length; i++)
         {
             users[i].Item1 = _dbContext.Users
                              .Add(new User
@@ -46,9 +49,9 @@ public class TestUsersRepository
                              .Entity;
 
             _dbContext.UserRoles
-                      .Add(new IdentityUserRole<int> 
-                      { 
-                          UserId = users[i].Item1.Id, 
+                      .Add(new IdentityUserRole<int>
+                      {
+                          UserId = users[i].Item1.Id,
                           RoleId = (int)users[i].Item2
                       });
         }
@@ -111,9 +114,9 @@ public class TestUsersRepository
     }
 
     // IsEmailInUse
-        // user != null
-        // user.del + ex/include
-        // null
+    // user != null
+    // user.del + ex/include
+    // null
 
     public async Task IsEmailInUse_UserExists_ReturnsTrue()
     {

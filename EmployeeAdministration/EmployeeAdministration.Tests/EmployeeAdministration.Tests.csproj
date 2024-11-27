@@ -20,14 +20,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Unit\Controllers\" />
-    <Folder Include="Unit\Services\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\EmployeeAdministration\EmployeeAdministration.Application\EmployeeAdministration.Application.csproj" />
-    <ProjectReference Include="..\EmployeeAdministration\EmployeeAdministration.Infrastructure\EmployeeAdministration.Infrastructure.csproj" />
-  </ItemGroup>
-
 </Project>

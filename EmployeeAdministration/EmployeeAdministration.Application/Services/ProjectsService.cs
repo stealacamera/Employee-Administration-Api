@@ -66,14 +66,14 @@ internal class ProjectsService : BaseService, IProjectsService
         });
     }
 
-    public async Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken)
+    public async Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken = default)
     {
         // Check if requester is an employee
         // If so, they need to be a member of the project
         var requester = await _workUnit.UsersRepository
                                        .GetByIdAsync(requesterId, cancellationToken);
 
-        if (requester == null)
+        if (requester == null || requester.DeletedAt != null)
             throw new UnauthorizedException();
         else if(!await _workUnit.UsersRepository
                                 .IsUserInRoleAsync(requester, Roles.Administrator, cancellationToken))
@@ -136,13 +136,10 @@ internal class ProjectsService : BaseService, IProjectsService
                 if (user == null || user.DeletedAt != null)
                     continue;
 
-                bool isUserMember = await _workUnit.ProjectMembersRepository
-                                                   .IsUserMemberAsync(userId, projectId, cancellationToken);
-
                 var userRole = await _workUnit.UsersRepository
                                               .GetUserRoleAsync(user, cancellationToken);
 
-                if (userRole != Roles.Employee || isUserMember)
+                if (userRole != Roles.Employee)
                     continue;
 
                 await _workUnit.ProjectMembersRepository
