@@ -18,7 +18,8 @@ internal class ProjectsService : BaseService, IProjectsService
         {
             CreatedAt = DateTime.UtcNow,
             Name = request.Name,
-            Description = request.Description
+            Description = request.Description,
+            StatusId = ProjectStatuses.InProgress.Value
         };
 
         // Create project
@@ -32,7 +33,7 @@ internal class ProjectsService : BaseService, IProjectsService
             projectMembers = await CreateProjectMembersAsync(newProject.Id, request.EmployeeIds, cancellationToken);
 
         return new ComprehensiveProject(
-            newProject.Id, newProject.Name,
+            newProject.Id, newProject.Name, ProjectStatuses.InProgress,
             new List<Task>(), projectMembers,
             newProject.Description);
     }
@@ -89,7 +90,7 @@ internal class ProjectsService : BaseService, IProjectsService
             throw new EntityNotFoundException(nameof(BriefProject));
 
         return new ComprehensiveProject(
-            project.Id, project.Name, 
+            project.Id, project.Name, ProjectStatuses.FromId(project.StatusId),
             await GetProjectTasksAsync(id, cancellationToken), 
             await GetProjectMembersAsync(id, cancellationToken), 
             project.Description);
@@ -98,7 +99,7 @@ internal class ProjectsService : BaseService, IProjectsService
     public async Task<BriefProject> UpdateAsync(int id, UpdateProjectRequest request, CancellationToken cancellationToken = default)
     {
         if (request.Name == null && request.Description == null)
-            throw new ValidationException("At least one attribute needs to be updated");
+            throw new ValidationException("Other", "At least one attribute needs to be updated");
 
         var project = await _workUnit.ProjectsRepository
                                      .GetByIdAsync(id, cancellationToken);

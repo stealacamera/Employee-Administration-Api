@@ -1,13 +1,21 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace EmployeeAdministration.API.Common;
 
-internal static class Startup
+internal static class StartupUtils
 {
-    public static void RegisterSwagger(SwaggerGenOptions options)
+    public static void RegisterUtils(this IServiceCollection services)
+    {
+        services.AddSwaggerGen(RegisterSwagger);
+
+        services.AddTransient<ExceptionHandlingMiddleware>();
+        services.AddSingleton<IAuthorizationHandler, CustomRoleAuthorizationHandler>();
+    }
+
+    private static void RegisterSwagger(SwaggerGenOptions options)
     {
         // Add JWT authentication
         options.AddSecurityDefinition(

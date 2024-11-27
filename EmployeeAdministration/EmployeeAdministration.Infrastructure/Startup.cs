@@ -1,21 +1,24 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
-using EmployeeAdministration.Application.Abstractions.Services;
+using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Domain.Entities;
 using EmployeeAdministration.Infrastructure.Options.Setups;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+using System.Configuration;
 
 namespace EmployeeAdministration.Infrastructure;
 
 public static class Startup
 {
-    public static void RegisterInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static void RegisterInfrastructure(this WebApplicationBuilder builder)
     {
-        services.AddDbContext<AppDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("Database")));
+        builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Database")));
 
-        services.AddIdentityCore<User>(options =>
+        builder.Services.AddIdentityCore<User>(options =>
                 {
                     options.SignIn.RequireConfirmedAccount = false;
 
@@ -28,23 +31,33 @@ public static class Startup
                 .AddRoles<Role>()
                 .AddEntityFrameworkStores<AppDbContext>();
 
-        // Should both jwt + cookies be used? or exclusively one?
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
                     options.SaveToken = true;
                     options.MapInboundClaims = false;
                 });
 
-        services.AddAuthorization();
+        builder.Services.AddAuthorization();
         
-        services.ConfigureOptions<JwtOptionsSetup>();
-        services.ConfigureOptions<CloudinaryOptionsSetup>();
+        builder.Services.ConfigureOptions<JwtOptionsSetup>();
+        builder.Services.ConfigureOptions<CloudinaryOptionsSetup>();
+        builder.Services.ConfigureOptions<JwtBearerOptionsSetup>();
 
-        services.AddScoped<IJwtProvider, JwtProvider>();
-        services.ConfigureOptions<JwtBearerOptionsSetup>();
+        builder.Services.AddStackExchangeRedisCache(options => options.Configuration = builder.Configuration.GetConnectionString("Redis"));
+
+        builder.Services.AddScoped<IJwtProvider, JwtProvider>();
         
-        services.AddScoped<IImagesService, ImagesService>();
-        services.AddScoped<IWorkUnit, WorkUnit>();
+        builder.Services.AddScoped<IImagesService, ImagesService>();
+        builder.Services.AddScoped<IWorkUnit, WorkUnit>();
+        builder.Services.AddScoped<IAuthService, AuthService>();
+
+        // Register logger
+        Log.Logger = new LoggerConfiguration().ReadFrom
+                                              .Configuration(builder.Configuration)
+                                              .CreateLogger();
+
+        builder.Logging.AddSerilog(Log.Logger);
+        builder.Host.UseSerilog();
     }
 }

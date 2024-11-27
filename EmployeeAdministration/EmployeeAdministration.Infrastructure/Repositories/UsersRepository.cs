@@ -4,15 +4,21 @@ using EmployeeAdministration.Domain.Entities;
 using EmployeeAdministration.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Newtonsoft.Json;
 
 namespace EmployeeAdministration.Infrastructure.Repositories;
 
 internal class UsersRepository : IUsersRepository
 {
     private readonly UserManager<User> _userManager;
+    private readonly IDistributedCache _distributedCache;
 
-    public UsersRepository(UserManager<User> userManager)
-        => _userManager = userManager;
+    public UsersRepository(UserManager<User> userManager, IDistributedCache distributedCache)
+    {
+        _userManager = userManager;
+        _distributedCache = distributedCache;
+    }
 
     public async Task<User> AddAsync(User user, string password, CancellationToken cancellationToken = default)
     {
@@ -25,7 +31,14 @@ internal class UsersRepository : IUsersRepository
     }
 
     public async System.Threading.Tasks.Task AddToRoleAsync(User user, Roles role, CancellationToken cancellationToken = default)
-        => await _userManager.AddToRoleAsync(user, Enum.GetName(role)!);
+    {
+        await _userManager.AddToRoleAsync(user, Enum.GetName(role)!);
+
+        await _distributedCache.SetStringAsync(
+            CacheKeys.UserRole(user.Id), 
+            JsonConvert.SerializeObject(role), 
+            cancellationToken);
+    }
 
     public async Task<bool> DoesUserExistAsync(int id, bool includeDeletedUsers = false, CancellationToken cancellationToken = default)
     {
@@ -47,7 +60,7 @@ internal class UsersRepository : IUsersRepository
             query = query.Where(e => e.DeletedAt != null);
 
         if (filterByRole != null)
-            query = query.Where(e => e.RolesIds.Contains((int)filterByRole));
+            query = query.Where(e => e.Roles.Any(e => e.RoleId == (int)filterByRole));
 
         return await query.ToListAsync(cancellationToken);
     }
@@ -59,7 +72,25 @@ internal class UsersRepository : IUsersRepository
         => await _userManager.FindByIdAsync(id.ToString());
 
     public async Task<Roles> GetUserRoleAsync(User user, CancellationToken cancellationToken = default)
-        => Enum.Parse<Roles>((await _userManager.GetRolesAsync(user))[0]);
+    {
+        var cachedUserRole = await _distributedCache.GetStringAsync($"{CacheKeys.UserRole}-${user.Id}", cancellationToken);
+        Roles userRole;
+
+        if (cachedUserRole == null)
+        {
+            userRole = await GetRoleAsync(user, cancellationToken);
+
+            // Cache user role
+            await _distributedCache.SetStringAsync(
+                CacheKeys.UserRole(user.Id), 
+                JsonConvert.SerializeObject(userRole), 
+                cancellationToken);
+        }
+        else
+            userRole = JsonConvert.DeserializeObject<Roles>(cachedUserRole);
+
+        return userRole;
+    }
 
     public async Task<bool> IsEmailInUseAsync(string email, bool includeDeletedUsers = false, CancellationToken cancellationToken = default)
     {
@@ -74,10 +105,32 @@ internal class UsersRepository : IUsersRepository
     }
 
     public async Task<bool> IsUserInRoleAsync(User user, Roles role, CancellationToken cancellationToken = default)
-        => await _userManager.IsInRoleAsync(user, Enum.GetName(role)!);
+    {
+        var cachedUserRole = await _distributedCache.GetStringAsync(CacheKeys.UserRole(user.Id), cancellationToken);
+        Roles userRole;
+
+        if(cachedUserRole == null)
+        {
+            userRole = await GetRoleAsync(user, cancellationToken);
+
+            await _distributedCache.SetStringAsync(
+                CacheKeys.UserRole(user.Id), 
+                JsonConvert.SerializeObject(userRole), 
+                cancellationToken);
+        }
+        else
+            userRole = JsonConvert.DeserializeObject<Roles>(cachedUserRole);
+        
+        return userRole == role;
+    }
 
     public async Task<bool> VerifyCredentialsAsync(User user, string password, CancellationToken cancellationToken = default)
         => await _userManager.CheckPasswordAsync(user, password);
+
+
+    // Helper functions
+    private async Task<Roles> GetRoleAsync(User user, CancellationToken cancellationToken)
+        => Enum.Parse<Roles>((await _userManager.GetRolesAsync(user))[0]);
 
     private Dictionary<string, string[]> GroupIdentityErrors(IEnumerable<IdentityError> errors)
     {

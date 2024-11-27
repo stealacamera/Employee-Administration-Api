@@ -7,14 +7,14 @@ namespace EmployeeAdministration.Application.Common.DTOs;
 
 public record BriefUser(
     [Required] int Id,
-    [Required, StringLength(ValidationUtils.EmailLength)] string Email,
+    [Required, StringLength(ValidationUtils.UserEmailLength)] string Email,
     [Required, StringLength(ValidationUtils.UserNameLength)] string FirstName,
     [Required, StringLength(ValidationUtils.UserNameLength)] string LastName,
     DateTime? DeletedAt = null);
 
 public record User(
     [Required] int Id, 
-    [Required, StringLength(ValidationUtils.EmailLength)] string Email, 
+    [Required, StringLength(ValidationUtils.UserEmailLength)] string Email, 
     [Required, StringLength(ValidationUtils.UserNameLength)] string FirstName, 
     [Required, StringLength(ValidationUtils.UserNameLength)] string LastName,
     [Required] Roles Role,
@@ -30,16 +30,23 @@ public record LoggedInUser(
     [Required] Tokens Tokens);
 
 public record VerifyCredentialsRequest(
-    [Required, EmailAddress, StringLength(80)] string Email, 
-    [Required, StringLength(80)] string Password);
+    [Required, EmailAddress, StringLength(ValidationUtils.UserEmailLength)] string Email, 
+    [Required, StringLength(ValidationUtils.UserPasswordLength)] string Password);
 
 public record CreateUserRequest(
     [Required] Roles Role,
     [Required, EmailAddress, StringLength(80)] string Email, 
     [Required, StringLength(ValidationUtils.UserNameLength)] string FirstName,
     [Required, StringLength(ValidationUtils.UserNameLength)] string LastName, 
-    [Required, StringLength(ValidationUtils.UserPasswordLength)] string Password, 
-    [MaxFileSize(ValidationUtils.MaxImageSize), FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)] IFormFile? ProfilePicture = null);
+
+    [Required, 
+     StringLength(ValidationUtils.UserPasswordLength), 
+     RegularExpression(ValidationUtils.PasswordRegex, ErrorMessage = ValidationUtils.PasswordRegexErrorMessage)] 
+    string Password, 
+    
+    [MaxFileSize(ValidationUtils.MaxImageSize), 
+     FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)] 
+    IFormFile? ProfilePicture = null);
 
 public record UpdateUserRequest
 {
@@ -61,3 +68,10 @@ public record UpdateUserRequest
         LastName = string.IsNullOrWhiteSpace(lastName) ? null : lastName.Trim();
     }
 }
+
+public record UpdatePasswordRequest(
+    [Required, StringLength(ValidationUtils.UserPasswordLength)] string CurrentPassword, 
+    [Required, 
+     StringLength(ValidationUtils.UserPasswordLength), 
+     RegularExpression(ValidationUtils.PasswordRegex, ErrorMessage = ValidationUtils.PasswordRegexErrorMessage)] 
+    string NewPassword);

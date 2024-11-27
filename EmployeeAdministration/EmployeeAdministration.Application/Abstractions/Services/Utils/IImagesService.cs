@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace EmployeeAdministration.Application.Abstractions.Services;
+namespace EmployeeAdministration.Application.Abstractions.Services.Utils;
 
 public interface IImagesService
 {

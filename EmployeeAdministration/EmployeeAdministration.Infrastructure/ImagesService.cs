@@ -1,6 +1,6 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using EmployeeAdministration.Application.Abstractions.Services;
+using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Infrastructure.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;

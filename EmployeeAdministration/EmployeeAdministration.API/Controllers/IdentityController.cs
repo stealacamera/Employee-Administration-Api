@@ -1,5 +1,6 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Common.DTOs;
+using EmployeeAdministration.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,9 +12,7 @@ public class IdentityController : BaseController
 {
     public IdentityController(IServicesManager servicesManager) : base(servicesManager) { }
 
-    // TODO add jwt
     // TODO make password encrypted
-    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync(VerifyCredentialsRequest request, CancellationToken cancellationToken)
     {
@@ -30,6 +29,7 @@ public class IdentityController : BaseController
                });
     }
 
+    [Authorize(Roles = nameof(Roles.Employee))]
     [HttpGet("profile")]
     public async Task<IActionResult> GetUserProfileAsync(CancellationToken cancellationToken)
     {

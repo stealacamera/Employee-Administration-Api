@@ -1,6 +1,6 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Abstractions.Interfaces;
-using EmployeeAdministration.Application.Abstractions.Services;
+using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Domain.Enums;
@@ -27,7 +27,7 @@ internal class UsersService : BaseService, IUsersService
         // Check if the email is currently in use
         if(await _workUnit.UsersRepository
                           .IsEmailInUseAsync(request.Password, cancellationToken: cancellationToken))
-            throw new ValidationException("Email is in use by an existing account");
+            throw new ValidationException("Email", "Email is in use by an existing account");
 
         string? profilePictureId = null;
 

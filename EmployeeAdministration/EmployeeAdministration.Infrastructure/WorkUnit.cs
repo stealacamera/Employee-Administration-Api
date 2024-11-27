@@ -3,6 +3,7 @@ using EmployeeAdministration.Application.Abstractions.Repositories;
 using EmployeeAdministration.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EmployeeAdministration.Infrastructure;
@@ -59,7 +60,10 @@ internal class WorkUnit : IWorkUnit
     {
         get
         {
-            _usersRepository ??= new UsersRepository(_serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>());
+            _usersRepository ??= new UsersRepository(
+                _serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>(),
+                _serviceProvider.GetRequiredService<IDistributedCache>());
+            
             return _usersRepository;
         }
     }

@@ -16,15 +16,6 @@ internal sealed class JwtProvider : IJwtProvider
     public JwtProvider(IOptions<JwtOptions> options)
         => _options = options.Value;
 
-    public int ExtractIdFromToken(string token)
-    {
-        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
-
-        return int.Parse(jwtToken.Claims
-                                 .Single(e => e.Type == JwtRegisteredClaimNames.Sub)
-                                 .Value);
-    }
-
     public string GenerateRefreshToken()
     {
         var randNr = new byte[64];

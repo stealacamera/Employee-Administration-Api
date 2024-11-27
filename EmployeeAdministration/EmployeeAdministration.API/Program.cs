@@ -1,15 +1,15 @@
+using EmployeeAdministration.API.Common;
 using EmployeeAdministration.Application;
 using EmployeeAdministration.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.RegisterInfrastructure(builder.Configuration);
+builder.RegisterInfrastructure();
 builder.Services.RegisterApplication();
+builder.Services.RegisterUtils();
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(EmployeeAdministration.API.Common.Startup.RegisterSwagger);
 
 var app = builder.Build();
 
@@ -24,6 +24,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.MapControllers();
 

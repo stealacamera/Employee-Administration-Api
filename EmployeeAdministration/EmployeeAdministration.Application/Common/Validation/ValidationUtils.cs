@@ -6,7 +6,7 @@ public static class ValidationUtils
     public const int MaxImageSize = 2_000_000;
 
     public const int UserNameLength = 100,
-                     EmailLength = 80,
+                     UserEmailLength = 80,
                      UserPasswordLength = 100;
 
     public const int ProjectNameLength = 150,
@@ -14,4 +14,7 @@ public static class ValidationUtils
 
     public const int TaskNameLength = 150,
                      TaskDescriptionLength = 350;
+
+    public const string PasswordRegex = "/^(?=.*\\d)(?=.*[a-zA-Z]).{8,}$/",
+                        PasswordRegexErrorMessage = "Passwords require a minimum of 8 characters (letters and numbers)";
 }
