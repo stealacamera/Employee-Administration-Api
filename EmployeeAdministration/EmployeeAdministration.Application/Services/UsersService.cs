@@ -234,7 +234,7 @@ internal class UsersService : BaseService, IUsersService
             return null;
 
         var areCorrectCredentials = await _workUnit.UsersRepository
-                                                   .VerifyCredentialsAsync(user, request.Password, cancellationToken));
+                                                   .VerifyCredentialsAsync(user, request.Password, cancellationToken);
             
         if(!areCorrectCredentials)
             return null;
@@ -249,6 +249,26 @@ internal class UsersService : BaseService, IUsersService
         return new LoggedInUser(
             new User(user.Id, user.Email, user.FirstName, user.Surname, userRole, profilePictureUrl),
             new Tokens(_jwtProvider.GenerateToken(user.Id, user.Email), _jwtProvider.GenerateRefreshToken()));
+    }
+
+    public async System.Threading.Tasks.Task UpdatePasswordAsync(int requesterId, UpdatePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken);
+
+        if (requester == null)
+            throw new UnauthorizedException();
+        else if (!await _workUnit.UsersRepository
+                                 .IsPasswordCorrectAsync(requester, request.CurrentPassword, cancellationToken))
+            throw new InvalidPasswordException();
+
+        await _workUnit.UsersRepository
+                       .UpdatePassword(
+                            requester,
+                            request.CurrentPassword,
+                            request.NewPassword,
+                            cancellationToken);
+
+        await _workUnit.SaveChangesAsync();
     }
 
 
@@ -297,25 +317,5 @@ internal class UsersService : BaseService, IUsersService
             model.Id, appointer, appointee,
             model.Name, model.IsCompleted,
             model.CreatedAt, model.Description);
-    }
-
-    public async System.Threading.Tasks.Task UpdatePasswordAsync(int requesterId, UpdatePasswordRequest request, CancellationToken cancellationToken = default)
-    {
-        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken);
-
-        if (requester == null)
-            throw new UnauthorizedException();
-        else if (!await _workUnit.UsersRepository
-                                 .IsPasswordCorrectAsync(requester, request.CurrentPassword, cancellationToken))
-            throw new InvalidPasswordException();
-
-        await _workUnit.UsersRepository
-                       .UpdatePassword(
-                            requester, 
-                            request.CurrentPassword, 
-                            request.NewPassword, 
-                            cancellationToken);
-        
-        await _workUnit.SaveChangesAsync();
     }
 }

@@ -12,6 +12,7 @@ public abstract class BaseTestService
 
     // Dummy Data
     protected static int _nonExistingEntityId = 0;
+    protected static string _usersPassword = "correct_password";
 
     protected static User _deletedUser = new User { Id = 4, Email = "deleted@email.com", DeletedAt = DateTime.UtcNow },
                           _nonMemberEmployee = new User { Id = 1, Email = "user1@email.com" },
