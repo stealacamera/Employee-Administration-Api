@@ -1,0 +1,151 @@
+﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Application.Abstractions.Services.Utils;
+using EmployeeAdministration.Application.Common.DTOs;
+using EmployeeAdministration.Application.Common.Exceptions;
+using EmployeeAdministration.Application.Services;
+using EmployeeAdministration.Domain.Enums;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
+using NSubstitute;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using Task = System.Threading.Tasks.Task;
+
+namespace EmployeeAdministration.Tests.Unit.Services;
+
+public class TestUsersService : BaseTestService
+{
+    private readonly UsersService _service;
+    private readonly UpdateUserRequest _dummyUpdateUserRequest = new("Test name");
+    private readonly UpdatePasswordRequest _dummyUpdatePasswordRequest = new(_usersPassword, "new_password");
+
+    public TestUsersService() : base()
+        => _service = new(
+                _mockWorkUnit,
+                Substitute.For<IJwtProvider>(),
+                Substitute.For<IImagesService>());
+
+    [Fact]
+    public async Task Create_ExistingEmail_ThrowsError()
+    {
+        var request = new CreateUserRequest(
+            Roles.Employee, _nonMemberEmployee.Email,
+            "Name", "Surname", "password");
+
+        await Assert.ThrowsAsync<ValidationException>(
+            async () => await _service.CreateUserAsync(request));
+    }
+
+    [Fact]
+    public async Task Create_ValidRequest_ReturnsUser()
+    {
+        var request = new CreateUserRequest(
+            Roles.Employee, "newemail@email.com",
+            "Name", "Surname", "password");
+
+        var result = await Record.ExceptionAsync(
+            async () => await _service.CreateUserAsync(request));
+
+        Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData(_nonExistingEntityId, typeof(EntityNotFoundException))]
+    [InlineData(_deletedUser.Id, typeof(EntityNotFoundException))]
+    [InlineData(_memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException))]
+    public async Task Delete_InvalidUser_ThrowsError(int userId, Type exceptionExpected)
+        => await Assert.ThrowsAsync(
+                exceptionExpected,
+                async () => await _service.DeleteUserAsync(userId));
+
+    [Fact]
+    public async Task Delete_ValidRequest_DeletesUserAndMemberships()
+    {
+        var result = await Record.ExceptionAsync(
+            async () => await _service.DeleteUserAsync(_nonMemberEmployee.Id));
+
+        Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData(_nonExistingEntityId)]
+    [InlineData(_deletedUser.Id)]
+    [InlineData(_nonMemberEmployee.Id)]
+    public async Task Update_InvalidRequester_ThrowsError(int requesterId, )
+        => await Assert.ThrowsAsync<UnauthorizedException>(
+                await _service.UpdateUserAsync(
+                    requesterId, _memberEmployee.Id,
+                    _dummyUpdateUserRequest));
+
+    [Theory]
+    [InlineData(_nonExistingEntityId)]
+    [InlineData(_deletedUser.Id)]
+    public async Task Update_InvalidUser_ThrowsError(int userId,)
+        => await Assert.ThrowsAsync<UnauthorizedException>(
+                await _service.UpdateUserAsync(_admin.Id, userId, _dummyUpdateUserRequest));
+
+    [Theory]
+    [InlineData(_admin.Id)]
+    [InlineData(_nonMemberEmployee.Id)]
+    public async Task Update_ValidRequest_ReturnsUpdatedUser(int requesterId)
+    {
+        var result = await Record.ExceptionAsync(
+            async () => await _service.UpdateUserAsync(requesterId, _nonMemberEmployee.Id, _dummyUpdateUserRequest));
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    [InlineData("nonexistinguser@email.com", _usersPassword)]
+    [InlineData(_memberEmployee.Email, "wrong_password")]
+    // user dont exist/wrong email
+    // wrong password
+    public async Task VerifyCredentials_InvalidRequest_ReturnsNull(string email, string password)
+    {
+        var result = await _service.VerifyCredentialsAsync(new(email, password));
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task VerifyCredentials_ValidRequest_ReturnsUser()
+    {
+        _mockWorkUnit.UsersRepository
+                     .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
+                     .Returns(true);
+
+        var result = await _service.VerifyCredentialsAsync(new(_memberEmployee.Email, _usersPassword));
+        Assert.NotNull(result);
+    }
+
+    [Theory]
+    [InlineData(_nonExistingEntityId)]
+    [InlineData(_deletedUser.Id)]
+    public async Task UpdatePassword_InvalidRequester_ThrowsError(int requesterId)
+        => await Assert.ThrowsAsync<UnauthorizedException>(
+                async () => await _service.UpdatePasswordAsync(requesterId, _dummyUpdatePasswordRequest));
+
+    [Fact]
+    public async Task UpdatePassword_InvalidCurrentPassword_ThrowsError()
+    {
+        _mockWorkUnit.UsersRepository
+                     .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
+                     .Returns(true);
+
+        await Assert.ThrowsAsync(
+            async () => await _service.UpdatePasswordAsync(
+                _memberEmployee.Id, 
+                new UpdatePasswordRequest("wrong_password", "new_password")));
+    }
+
+    [Fact]
+    public async Task UpdatePassword_ValidRequest_DoesNotThrowError()
+    {
+        _mockWorkUnit.UsersRepository
+                     .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
+                     .Returns(true);
+
+        var result = Record.ExceptionAsync(
+            async () => await _service.UpdatePasswordAsync(_memberEmployee.Id, _dummyUpdatePasswordRequest));
+
+        Assert.Null(result);
+    }
+}
