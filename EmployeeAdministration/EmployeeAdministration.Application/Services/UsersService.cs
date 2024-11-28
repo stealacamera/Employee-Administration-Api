@@ -76,7 +76,7 @@ internal class UsersService : BaseService, IUsersService
         var user = await _workUnit.UsersRepository
                                   .GetByIdAsync(userId, cancellationToken);
 
-        if (user == null || user.DeletedAt != null)
+        if (user == null)
             throw new EntityNotFoundException(nameof(User));
 
         // If user is an employee, check if there are open tasks assigned to user
@@ -146,7 +146,7 @@ internal class UsersService : BaseService, IUsersService
         var user = await _workUnit.UsersRepository
                                   .GetByIdAsync(id, cancellationToken);
 
-        if (user == null || user.DeletedAt != null)
+        if (user == null)
             throw new EntityNotFoundException(nameof(User));
 
         var userRole = await _workUnit.UsersRepository
@@ -185,16 +185,16 @@ internal class UsersService : BaseService, IUsersService
         var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken);
         var user = await _workUnit.UsersRepository.GetByIdAsync(userId, cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
-        else if (user == null || user.DeletedAt != null)
+        else if (user == null)
             throw new EntityNotFoundException(nameof(User));
 
         // Check if the user is an employee, they're updating themselves
-        bool isUserEmployee = await _workUnit.UsersRepository
+        bool isRequesterEmployee = await _workUnit.UsersRepository
                                              .IsUserInRoleAsync(requester, Roles.Employee, cancellationToken);
         
-        if (isUserEmployee && requester.Id != userId)
+        if (isRequesterEmployee && requester.Id != userId)
             throw new UnauthorizedException();
 
         // Update user profile
@@ -230,11 +230,13 @@ internal class UsersService : BaseService, IUsersService
         var user = await _workUnit.UsersRepository
                                   .GetByEmailAsync(request.Email, cancellationToken);
 
-        if (user == null || user.DeletedAt != null)
-            throw new EntityNotFoundException(nameof(User));
+        if (user == null)
+            return null;
 
-        if (!await _workUnit.UsersRepository
-                            .VerifyCredentialsAsync(user, request.Password, cancellationToken))
+        var areCorrectCredentials = await _workUnit.UsersRepository
+                                                   .VerifyCredentialsAsync(user, request.Password, cancellationToken));
+            
+        if(!areCorrectCredentials)
             return null;
 
         var userRole = await _workUnit.UsersRepository

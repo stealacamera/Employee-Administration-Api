@@ -73,7 +73,7 @@ internal class ProjectsService : BaseService, IProjectsService
         var requester = await _workUnit.UsersRepository
                                        .GetByIdAsync(requesterId, cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
         else if(!await _workUnit.UsersRepository
                                 .IsUserInRoleAsync(requester, Roles.Administrator, cancellationToken))
@@ -98,7 +98,7 @@ internal class ProjectsService : BaseService, IProjectsService
 
     public async Task<BriefProject> UpdateAsync(int id, UpdateProjectRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.Name == null && request.Description == null)
+        if (request.Name == null && request.Description == null && request.Status == null)
             throw new ValidationException("Other", "At least one attribute needs to be updated");
 
         var project = await _workUnit.ProjectsRepository
@@ -112,6 +112,8 @@ internal class ProjectsService : BaseService, IProjectsService
             project.Name = request.Name;
         if (request.Description != null)
             project.Description = request.Description;
+        if (request.Status != null)
+            project.StatusId = request.Status.Id;
 
         project.UpdatedAt = DateTime.UtcNow;
         await _workUnit.SaveChangesAsync();
@@ -133,7 +135,7 @@ internal class ProjectsService : BaseService, IProjectsService
                 var user = await _workUnit.UsersRepository
                                           .GetByIdAsync(userId, cancellationToken);
 
-                if (user == null || user.DeletedAt != null)
+                if (user == null)
                     continue;
 
                 var userRole = await _workUnit.UsersRepository

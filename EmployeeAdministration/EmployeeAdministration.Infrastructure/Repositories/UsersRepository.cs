@@ -25,7 +25,7 @@ internal class UsersRepository : IUsersRepository
         var result = await _userManager.CreateAsync(user, password);
 
         if (!result.Succeeded)
-            throw new IdentityException(GroupIdentityErrors(result.Errors));
+            throw new IdentityException(result);
 
         return user;
     }
@@ -65,11 +65,31 @@ internal class UsersRepository : IUsersRepository
         return await query.ToListAsync(cancellationToken);
     }
 
-    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-        => await _userManager.FindByEmailAsync(email);
+    public async Task<User?> GetByEmailAsync(
+        string email, 
+        bool excludeDeletedUser = true, 
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
 
-    public async Task<User?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
-        => await _userManager.FindByIdAsync(id.ToString());
+        if (excludeDeletedUser && user != null && user.DeletedAt != null)
+            return null;
+
+        return user;
+    }
+
+    public async Task<User?> GetByIdAsync(
+        int id,
+        bool excludeDeletedUser = true,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+
+        if (excludeDeletedUser && user != null && user.DeletedAt != null)
+            return null;
+
+        return user;
+    }
 
     public async Task<Roles> GetUserRoleAsync(User user, CancellationToken cancellationToken = default)
     {
@@ -132,7 +152,7 @@ internal class UsersRepository : IUsersRepository
         var result = await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
         if (!result.Succeeded)
-            throw new IdentityException(GroupIdentityErrors(result.Errors));
+            throw new IdentityException(result);
     }
 
     public async Task<bool> VerifyCredentialsAsync(User user, string password, CancellationToken cancellationToken = default)

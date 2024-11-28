@@ -115,7 +115,7 @@ internal class TasksService : BaseService, ITasksService
         var requester = await _workUnit.UsersRepository
                                        .GetByIdAsync(requesterId, cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
 
         // Check requester is an admin 
@@ -140,7 +140,7 @@ internal class TasksService : BaseService, ITasksService
         var requester = await _workUnit.UsersRepository
                                        .GetByIdAsync(requesterId, cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
 
         bool isRequesterAdmin = await _workUnit.UsersRepository
@@ -159,7 +159,7 @@ internal class TasksService : BaseService, ITasksService
         var appointee = await _workUnit.UsersRepository.GetByIdAsync(appointeeId, cancellationToken);
 
         // Check appointee exists and is an employee in the project
-        if (appointee == null || appointee.DeletedAt != null)
+        if (appointee == null)
             throw new EntityNotFoundException(nameof(User));
         else if (!await _workUnit.UsersRepository.IsUserInRoleAsync(appointee, Roles.Employee, cancellationToken))
             throw new NonEmployeeUserException();
