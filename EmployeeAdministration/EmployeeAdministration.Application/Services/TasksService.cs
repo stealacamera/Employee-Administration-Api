@@ -15,11 +15,11 @@ internal class TasksService : BaseService, ITasksService
     {
         bool isTaskSelfAssigned = requesterId == request.AppointeeId;
         var requester = await ValidateRequesterIsAdminOrInProjectAsync(requesterId, projectId, cancellationToken);        
-        var appointee = await ValidateAppointeeToCreateTaskAsync(request.AppointeeId, projectId, isTaskSelfAssigned, cancellationToken);
-
-        // Check project exists
+        
         if (!await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
             throw new EntityNotFoundException(nameof(Project));
+
+        var appointee = await ValidateAppointeeToCreateTaskAsync(request.AppointeeId, projectId, isTaskSelfAssigned, cancellationToken);
 
         // Add new task
         var newTask = new Domain.Entities.Task
@@ -59,7 +59,7 @@ internal class TasksService : BaseService, ITasksService
     {
         var requester = await ValidateRequesterIsAdminOrInProjectAsync(requesterId, projectId, cancellationToken);
 
-        if (await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
+        if (!await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
             throw new EntityNotFoundException(nameof(Project));
 
         return (await _workUnit.TasksRepository

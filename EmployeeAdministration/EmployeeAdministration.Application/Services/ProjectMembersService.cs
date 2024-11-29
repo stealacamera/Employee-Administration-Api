@@ -20,7 +20,7 @@ internal class ProjectMembersService : BaseService, IProjectMembersService
         // Only permit users that are employees and not apart of the project
         if (user == null)
             throw new EntityNotFoundException(nameof(User));
-        else if (await _workUnit.UsersRepository.IsUserInRoleAsync(user, Domain.Enums.Roles.Employee, cancellationToken))
+        else if (!await _workUnit.UsersRepository.IsUserInRoleAsync(user, Domain.Enums.Roles.Employee, cancellationToken))
             throw new NonEmployeeUserException();
         else if (await _workUnit.ProjectMembersRepository.IsUserMemberAsync(employeeId, projectId, cancellationToken))
             throw new ExistingProjectMemberException();
@@ -44,14 +44,17 @@ internal class ProjectMembersService : BaseService, IProjectMembersService
         // Check if the employee & the project exist, and if the employee is part of the project
         var project = await _workUnit.ProjectsRepository.GetByIdAsync(projectId, cancellationToken);
         var user = await _workUnit.UsersRepository.GetByIdAsync(employeeId, cancellationToken: cancellationToken);
-        var member = await _workUnit.ProjectMembersRepository.GetByIdsAsync(employeeId, projectId, cancellationToken);
 
         if (project == null)
             throw new EntityNotFoundException(nameof(Project));
         else if (user == null)
             throw new EntityNotFoundException(nameof(User));
-        else if (member == null)
-            throw new EntityNotFoundException("Project member");
+
+        var member = await _workUnit.ProjectMembersRepository
+                                    .GetByIdsAsync(employeeId, projectId, cancellationToken);
+
+        if (member == null)
+            throw new NotAProjectMemberException();
 
         // Don't complete if the member has open tasks for the project
         if (await _workUnit.TasksRepository.DoesUserHaveOpenTasksAsync(employeeId, projectId, cancellationToken))

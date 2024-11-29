@@ -70,16 +70,15 @@ public class TestTasksService : BaseTestService
 
     public static readonly IEnumerable<object[]> _getAllForProject_InvalidRequester_Arguments = new List<object[]>
     {
-        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
-        new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedUser.Id },
+        new object[] { _nonMemberEmployee.Id },
     };
 
     [Theory]
     [MemberData(nameof(_getAllForProject_InvalidRequester_Arguments))]
-    public async Task GetAllForProject_InvalidRequester_ThrowsError(int requesterId, Type exceptionExpected)
-        => await Assert.ThrowsAsync(
-                exceptionExpected,
+    public async Task GetAllForProject_InvalidRequester_ThrowsError(int requesterId)
+        => await Assert.ThrowsAsync<UnauthorizedException>(
                 async () => await _service.GetAllForProjectAsync(requesterId, _projectWithOpenTasks.Id));
 
     public static readonly IEnumerable<object[]> _validUserArguments = new List<object[]>
@@ -123,7 +122,7 @@ public class TestTasksService : BaseTestService
         var result = await Record.ExceptionAsync(
             async () => await _service.GetByIdAsync(requesterId, _adminAssignedTask.Id));
 
-        Assert.NotNull(result);
+        Assert.Null(result);
     }
 
     [Theory]

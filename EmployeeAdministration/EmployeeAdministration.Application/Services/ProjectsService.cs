@@ -68,6 +68,13 @@ internal class ProjectsService : BaseService, IProjectsService
 
     public async Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken = default)
     {
+        // Retrieve project
+        var project = await _workUnit.ProjectsRepository
+                                     .GetByIdAsync(id, cancellationToken);
+
+        if(project == null)
+            throw new EntityNotFoundException(nameof(BriefProject));
+        
         // Check if requester is an employee
         // If so, they need to be a member of the project
         var requester = await _workUnit.UsersRepository
@@ -82,12 +89,6 @@ internal class ProjectsService : BaseService, IProjectsService
                                 .IsUserMemberAsync(requesterId, id, cancellationToken))
                 throw new UnauthorizedException();
         }
-
-        // Retrieve project
-        var project = await _workUnit.ProjectsRepository.GetByIdAsync(id, cancellationToken);
-
-        if(project == null)
-            throw new EntityNotFoundException(nameof(BriefProject));
 
         return new ComprehensiveProject(
             project.Id, project.Name, ProjectStatuses.FromId(project.StatusId),

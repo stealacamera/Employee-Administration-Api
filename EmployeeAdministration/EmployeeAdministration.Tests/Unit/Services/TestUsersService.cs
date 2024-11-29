@@ -23,12 +23,18 @@ public class TestUsersService : BaseTestService
                 Substitute.For<IJwtProvider>(),
                 Substitute.For<IImagesService>());
 
-    [Fact]
-    public async Task Create_ExistingEmail_ThrowsError()
+    public static readonly IEnumerable<object[]> _create_ExistingEmail_Arguments = new List<object[]>
+    {
+        new object[] { _nonMemberEmployee.Email! },
+        new object[] { _deletedUser.Email! }
+    };
+
+    [Theory]
+    [MemberData(nameof(_create_ExistingEmail_Arguments))]
+    public async Task Create_ExistingEmail_ThrowsError(string email)
     {
         var request = new CreateUserRequest(
-            Roles.Employee, _nonMemberEmployee.Email!,
-            "Name", "Surname", "password");
+            Roles.Employee, email, "Name", "Surname", "password");
 
         await Assert.ThrowsAsync<ValidationException>(
             async () => await _service.CreateUserAsync(request));
@@ -57,7 +63,8 @@ public class TestUsersService : BaseTestService
     [Theory]
     [MemberData(nameof(_deleteUserArguments))]
     public async Task Delete_InvalidUser_ThrowsError(int userId, Type exceptionExpected)
-        => await Assert.ThrowsAsync(exceptionExpected, async () => await _service.DeleteUserAsync(userId));
+        => await Assert.ThrowsAsync(
+                exceptionExpected, async () => await _service.DeleteUserAsync(userId));
 
     [Fact]
     public async Task Delete_ValidRequest_DeletesUserAndMemberships()
@@ -90,7 +97,7 @@ public class TestUsersService : BaseTestService
     [Theory]
     [MemberData(nameof(_updateUser_InvalidUser_Arguments))]
     public async Task Update_InvalidUser_ThrowsError(int userId)
-        => await Assert.ThrowsAsync<UnauthorizedException>(async () =>
+        => await Assert.ThrowsAsync<EntityNotFoundException>(async () =>
                 await _service.UpdateUserAsync(_admin.Id, userId, _dummyUpdateUserRequest));
 
     public static readonly IEnumerable<object[]> _updateUser_ValidRequest_Arguments = new List<object[]>
@@ -157,7 +164,7 @@ public class TestUsersService : BaseTestService
     public async Task UpdatePassword_ValidRequest_DoesNotThrowError()
     {
         _mockWorkUnit.UsersRepository
-                     .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
+                     .IsPasswordCorrectAsync(_memberEmployee, _usersPassword)
                      .Returns(true);
 
         var result = await Record.ExceptionAsync(

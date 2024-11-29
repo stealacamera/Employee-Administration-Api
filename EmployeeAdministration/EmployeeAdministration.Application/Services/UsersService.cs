@@ -26,7 +26,7 @@ internal class UsersService : BaseService, IUsersService
     {
         // Check if the email is currently in use
         if(await _workUnit.UsersRepository
-                          .IsEmailInUseAsync(request.Password, includeDeletedUsers: true, cancellationToken: cancellationToken))
+                          .IsEmailInUseAsync(request.Email, includeDeletedUsers: true, cancellationToken))
             throw new ValidationException("Email", "Email is in use by an existing account");
 
         string? profilePictureId = null;
@@ -194,7 +194,7 @@ internal class UsersService : BaseService, IUsersService
         bool isRequesterEmployee = await _workUnit.UsersRepository
                                              .IsUserInRoleAsync(requester, Roles.Employee, cancellationToken);
         
-        if (isRequesterEmployee && requester.Id != userId)
+        if (isRequesterEmployee && requester.Id != user.Id)
             throw new UnauthorizedException();
 
         // Update user profile

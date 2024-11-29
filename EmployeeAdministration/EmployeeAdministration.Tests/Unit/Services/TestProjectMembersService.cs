@@ -50,7 +50,7 @@ public class TestProjectMembersService : BaseTestService
     {
         new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
         new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
-        new object[] { _nonMemberEmployee.Id, typeof(EntityNotFoundException) },
+        new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
         new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
     };
 
@@ -59,17 +59,13 @@ public class TestProjectMembersService : BaseTestService
     public async Task RemoveEmployeeFromProject_UserIsInvalid_ThrowsError(int employeeId, Type exceptionTypeExpected)
         => await Assert.ThrowsAsync(
                 exceptionTypeExpected,
-                async () => await _service.AddEmployeeToProjectAsync(employeeId, _projectWithOpenTasks.Id));
+                async () => await _service.RemoveEmployeeFromProjectAsync(employeeId, _projectWithOpenTasks.Id));
 
     [Fact]
     public async Task RemoveEmployeeFromProject_ValidRequest_RemovesMember()
     {
-        _mockWorkUnit.TasksRepository
-                     .DoesUserHaveOpenTasksAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
-                     .Returns(false);
-
         var result = await Record.ExceptionAsync(async () => 
-            await _service.AddEmployeeToProjectAsync(_memberEmployee.Id, _projectWithOpenTasks.Id));
+            await _service.RemoveEmployeeFromProjectAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id));
         
         Assert.Null(result);
     }

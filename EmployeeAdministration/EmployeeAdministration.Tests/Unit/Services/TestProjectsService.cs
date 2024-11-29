@@ -59,29 +59,29 @@ public class TestProjectsService : BaseTestService
         Assert.Null(result);
     }
 
-    public static readonly IEnumerable<object[]> _getAllForProject_InvalidRequester_Arguments = new List<object[]>
+    public static readonly IEnumerable<object[]> _getById_InvalidRequester_Arguments = new List<object[]>
     {
-        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
-        new object[] { _nonMemberEmployee.Id, typeof(UnauthorizedException) },
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedUser.Id },
+        new object[] { _nonMemberEmployee.Id },
     };
 
     [Theory]
-    [MemberData(nameof(_getAllForProject_InvalidRequester_Arguments))]
-    public async Task GetById_InvalidRequester_ThrowsError(int userId, Type exceptionExpected)
-        => await Assert.ThrowsAsync(
-                exceptionExpected, async () => await _service.GetByIdAsync(_projectWithOpenTasks.Id, userId));
+    [MemberData(nameof(_getById_InvalidRequester_Arguments))]
+    public async Task GetById_InvalidRequester_ThrowsError(int userId)
+        => await Assert.ThrowsAsync<UnauthorizedException>(
+                async () => await _service.GetByIdAsync(_projectWithOpenTasks.Id, userId));
 
     [Fact]
     public async Task GetById_NonexistentProject_ThrowsError()
         => await Assert.ThrowsAsync<EntityNotFoundException>(
-                async () => await _service.GetByIdAsync(_memberEmployee.Id, _nonExistingEntityId));
+                async () => await _service.GetByIdAsync(_nonExistingEntityId, _memberEmployee.Id));
 
     [Fact]
     public async Task GetById_ValidRequest_DoesNotThrowError()
     {
         var result = await Record.ExceptionAsync(
-            async () => await _service.GetByIdAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id));
+            async () => await _service.GetByIdAsync(_projectWithCompletedTasks.Id, _memberEmployee.Id));
 
         Assert.Null(result);
     }

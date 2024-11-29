@@ -19,14 +19,20 @@ public abstract class BaseTestService
                           _memberEmployee = new User { Id = 2, Email = "user2@email.com" },
                           _admin = new User { Id = 3, Email = "admin@email.com" };
 
-    protected static Project _projectWithOpenTasks = new Project { Id = 1 },
-                             _projectWithCompletedTasks = new Project { Id = 2 };
+    protected static Project _projectWithOpenTasks = new Project { Id = 1, StatusId = ProjectStatuses.InProgress.Id },
+                             _projectWithCompletedTasks = new Project { Id = 2, StatusId = ProjectStatuses.InProgress.Id };
 
-    protected static ProjectMember _membership = new ProjectMember
-    {
-        ProjectId = _projectWithOpenTasks.Id,
-        EmployeeId = _memberEmployee.Id
-    };
+    protected static ProjectMember 
+        _openTasksMembership = new()
+        {
+            ProjectId = _projectWithOpenTasks.Id,
+            EmployeeId = _memberEmployee.Id
+        },
+        _completedTasksMembership = new() 
+        { 
+            ProjectId = _projectWithCompletedTasks.Id,
+            EmployeeId = _memberEmployee.Id
+        };
 
     protected static Task _adminAssignedTask = new Task
     {
@@ -55,17 +61,27 @@ public abstract class BaseTestService
         SeedDummyProjects();
         SeedDummyUsers();
         SeedDummyRoles();
+        SeedDummyMemberships();
+        SeedDummyTasks();
+    }
 
-        // Add membership
+    private void SeedDummyMemberships()
+    {
+        _mockWorkUnit.ProjectMembersRepository
+                     .GetByIdsAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
+                     .Returns(_openTasksMembership);
+
         _mockWorkUnit.ProjectMembersRepository
                      .IsUserMemberAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
                      .Returns(true);
 
         _mockWorkUnit.ProjectMembersRepository
+                     .GetByIdsAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
+                     .Returns(_completedTasksMembership);
+
+        _mockWorkUnit.ProjectMembersRepository
                      .IsUserMemberAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
                      .Returns(true);
-
-        SeedDummyTasks();
     }
 
     private void SeedDummyRoles()
@@ -97,6 +113,14 @@ public abstract class BaseTestService
         _mockWorkUnit.TasksRepository.GetByIdAsync(_adminAssignedTask.Id).Returns(_adminAssignedTask);
 
         _mockWorkUnit.TasksRepository
+                     .DoesUserHaveOpenTasksAsync(_memberEmployee.Id)
+                     .Returns(true);
+
+        _mockWorkUnit.TasksRepository
+                     .DoesUserHaveOpenTasksAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
+                     .Returns(false);
+
+        _mockWorkUnit.TasksRepository
                      .DoesUserHaveOpenTasksAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
                      .Returns(true);
 
@@ -114,7 +138,8 @@ public abstract class BaseTestService
         _mockWorkUnit.UsersRepository.GetByIdAsync(_nonExistingEntityId).Returns(null as User);
         _mockWorkUnit.UsersRepository.DoesUserExistAsync(_nonExistingEntityId).Returns(false);
 
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_deletedUser.Id).Returns(_deletedUser);
+        _mockWorkUnit.UsersRepository.GetByIdAsync(_deletedUser.Id).Returns(null as User);
+        _mockWorkUnit.UsersRepository.GetByIdAsync(_deletedUser.Id, excludeDeletedUser: false).Returns(_deletedUser);
         _mockWorkUnit.UsersRepository.DoesUserExistAsync(_deletedUser.Id).Returns(true);
         _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_deletedUser.Email, includeDeletedUsers: false).Returns(false);
         _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_deletedUser.Email, includeDeletedUsers: true).Returns(true);
