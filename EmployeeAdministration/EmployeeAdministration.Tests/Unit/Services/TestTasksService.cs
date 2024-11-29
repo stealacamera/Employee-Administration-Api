@@ -2,6 +2,7 @@
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Application.Services;
+using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
 
@@ -15,25 +16,28 @@ public class TestTasksService : BaseTestService
         => _service = new TasksService(_mockWorkUnit);
 
     [Theory]
-    [InlineData(_nonExistingEntityId)]
-    [InlineData(_deletedUser.Id)]
-    [InlineData(_nonMemberEmployee.Id)]
+    [MemberData(nameof(_invalidUsersArguments))]
     public async Task Create_AppointerIsInvalid_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
                 async () => await _service.CreateAsync(requesterId, _projectWithOpenTasks.Id, _dummyCreateRequest));
 
+    public static readonly IEnumerable<object[]> _create_InvalidAppointee_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _admin.Id, typeof(NonEmployeeUserException) },
+        new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
+    };
+
     [Theory]
-    [InlineData(_nonExistingEntityId, EntityNotFoundException)]
-    [InlineData(_deletedUser.Id, EntityNotFoundException)]
-    [InlineData(_admin.Id, NonEmployeeUserException)]
-    [InlineData(_nonMemberEmployee.Id, NotAProjectMemberException)]
+    [MemberData(nameof(_create_InvalidAppointee_Arguments))]
     public async Task Create_AppointeeIsInvalid_ThrowsError(int appointeeId, Type exceptionExpected)
     {
         var request = new CreateTaskRequest(appointeeId, "Test name");
 
         await Assert.ThrowsAsync(
                 exceptionExpected,
-                async () => await _service.CreateAsync(_admin.Id, projectId, request));
+                async () => await _service.CreateAsync(_admin.Id, _projectWithOpenTasks.Id, request));
     }
 
     [Fact]
@@ -64,18 +68,28 @@ public class TestTasksService : BaseTestService
         Assert.Null(result);
     }
 
+    public static readonly IEnumerable<object[]> _getAllForProject_InvalidRequester_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
+    };
+
     [Theory]
-    [InlineData(_nonExistingEntityId, EntityNotFoundException)]
-    [InlineData(_deletedUser.Id, EntityNotFoundException)]
-    [InlineData(_nonMemberEmployee, NotAProjectMemberException)]
+    [MemberData(nameof(_getAllForProject_InvalidRequester_Arguments))]
     public async Task GetAllForProject_InvalidRequester_ThrowsError(int requesterId, Type exceptionExpected)
         => await Assert.ThrowsAsync(
                 exceptionExpected,
                 async () => await _service.GetAllForProjectAsync(requesterId, _projectWithOpenTasks.Id));
 
+    public static readonly IEnumerable<object[]> _validUserArguments = new List<object[]>
+    {
+        new object[] { _admin.Id },
+        new object[] { _memberEmployee.Id },
+    };
+
     [Theory]
-    [InlineData(_admin.Id)]
-    [InlineData(_memberEmployee.Id)]
+    [MemberData(nameof(_validUserArguments))]
     public async Task GetAllForProject_ValidRequester_ReturnsProjectTasks(int requesterId)
     {
         var result = await Record.ExceptionAsync(
@@ -85,23 +99,25 @@ public class TestTasksService : BaseTestService
     }
 
     [Theory]
-    [InlineData(_nonExistingEntityId)]
-    [InlineData(_deletedUser.Id)]
-    [InlineData(_nonMemberEmployee.Id)]
+    [MemberData(nameof(_invalidUsersArguments))]
     public async Task GetById_InvalidUser_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
-                async () => _service.GetByIdAsync(requesterId, _adminAssignedTask.Id));
+                async () => await _service.GetByIdAsync(requesterId, _adminAssignedTask.Id));
 
     [Theory]
-    [InlineData(_admin.Id)]
-    [InlineData(_memberEmployee.Id)]
+    [MemberData(nameof(_validUserArguments))]
     public async Task GetById_TaskDoesntExist_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<EntityNotFoundException>(
                 async () => await _service.GetByIdAsync(requesterId, _nonExistingEntityId));
 
+    public static readonly IEnumerable<object[]> _validTaskRequesterArguments = new List<object[]>
+    {
+        new object[] { _admin.Id },
+        new object[] { _adminAssignedTask.AppointeeEmployeeId },
+    };
+
     [Theory]
-    [InlineData(_admin.Id)]
-    [InlineData(_adminAssignedTask.AppointeeEmployeeId)]
+    [MemberData(nameof(_validTaskRequesterArguments))]
     public async Task GetById_ValidRequest_ReturnsTask(int requesterId)
     {
         var result = await Record.ExceptionAsync(
@@ -111,23 +127,19 @@ public class TestTasksService : BaseTestService
     }
 
     [Theory]
-    [InlineData(_nonExistingEntityId)]
-    [InlineData(_deletedUser.Id)]
-    [InlineData(_nonMemberEmployee.Id)]
+    [MemberData(nameof(_invalidUsersArguments))]
     public async Task Update_InvalidRequester_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
-                async () => await _service.UpdateAsync(requesterId, _adminAssignedTask.Id, _dummyUpdateRequest);
+                async () => await _service.UpdateAsync(requesterId, _adminAssignedTask.Id, _dummyUpdateRequest));
 
     [Theory]
-    [InlineData(_admin.Id)]
-    [InlineData(_adminAssignedTask.AppointeeEmployeeId)]
+    [MemberData(nameof(_validTaskRequesterArguments))]
     public async Task Update_TaskDoesntExist_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<EntityNotFoundException>(
-                async () => await _service.UpdateAsync(requesterId, _nonExistingEntityId, _dummyUpdateRequest);
+                async () => await _service.UpdateAsync(requesterId, _nonExistingEntityId, _dummyUpdateRequest));
 
     [Theory]
-    [InlineData(_admin.Id)]
-    [InlineData(_adminAssignedTask.AppointeeEmployeeId)]
+    [MemberData(nameof(_validTaskRequesterArguments))]
     public async Task Update_ValidRequest_DoesNotThrowError(int requesterId)
     {
         var result = await Record.ExceptionAsync(

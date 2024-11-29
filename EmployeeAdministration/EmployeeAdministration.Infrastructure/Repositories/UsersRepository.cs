@@ -40,16 +40,13 @@ internal class UsersRepository : IUsersRepository
             cancellationToken);
     }
 
-    public async Task<bool> DoesUserExistAsync(int id, bool includeDeletedUsers = false, CancellationToken cancellationToken = default)
+    public async Task<bool> DoesUserExistAsync(
+        int id, 
+        bool includeDeletedUsers = false, 
+        CancellationToken cancellationToken = default)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
-
-        if (user == null)
-            return false;
-        else if (!includeDeletedUsers && user.DeletedAt != null)
-            return false;
-
-        return true;
+        var user = await GetByIdAsync(id, excludeDeletedUser: !includeDeletedUsers, cancellationToken);
+        return user != null;
     }
 
     public async Task<IEnumerable<User>> GetAllAsync(bool includeDeletedUsers = false, Roles? filterByRole = null, CancellationToken cancellationToken = default)
@@ -116,9 +113,7 @@ internal class UsersRepository : IUsersRepository
     {
         var user = await _userManager.FindByEmailAsync(email);
 
-        if (user == null)
-            return false;
-        else if (!includeDeletedUsers && user.DeletedAt != null)
+        if (user == null || (!includeDeletedUsers && user.DeletedAt != null))
             return false;
 
         return true;

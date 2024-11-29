@@ -1,14 +1,13 @@
-﻿using EmployeeAdministration.Application.Abstractions;
+﻿using System.ComponentModel.DataAnnotations;
+using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Application.Services;
 using EmployeeAdministration.Domain.Enums;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
 using NSubstitute;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 using Task = System.Threading.Tasks.Task;
+using ValidationException = EmployeeAdministration.Application.Common.Exceptions.ValidationException;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
 
@@ -28,7 +27,7 @@ public class TestUsersService : BaseTestService
     public async Task Create_ExistingEmail_ThrowsError()
     {
         var request = new CreateUserRequest(
-            Roles.Employee, _nonMemberEmployee.Email,
+            Roles.Employee, _nonMemberEmployee.Email!,
             "Name", "Surname", "password");
 
         await Assert.ThrowsAsync<ValidationException>(
@@ -48,14 +47,17 @@ public class TestUsersService : BaseTestService
         Assert.Null(result);
     }
 
+    public static readonly IEnumerable<object[]> _deleteUserArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
+    };
+
     [Theory]
-    [InlineData(_nonExistingEntityId, typeof(EntityNotFoundException))]
-    [InlineData(_deletedUser.Id, typeof(EntityNotFoundException))]
-    [InlineData(_memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException))]
+    [MemberData(nameof(_deleteUserArguments))]
     public async Task Delete_InvalidUser_ThrowsError(int userId, Type exceptionExpected)
-        => await Assert.ThrowsAsync(
-                exceptionExpected,
-                async () => await _service.DeleteUserAsync(userId));
+        => await Assert.ThrowsAsync(exceptionExpected, async () => await _service.DeleteUserAsync(userId));
 
     [Fact]
     public async Task Delete_ValidRequest_DeletesUserAndMemberships()
@@ -66,26 +68,39 @@ public class TestUsersService : BaseTestService
         Assert.Null(result);
     }
 
-    [Theory]
-    [InlineData(_nonExistingEntityId)]
-    [InlineData(_deletedUser.Id)]
-    [InlineData(_nonMemberEmployee.Id)]
-    public async Task Update_InvalidRequester_ThrowsError(int requesterId, )
-        => await Assert.ThrowsAsync<UnauthorizedException>(
-                await _service.UpdateUserAsync(
-                    requesterId, _memberEmployee.Id,
-                    _dummyUpdateUserRequest));
+    public static readonly IEnumerable<object[]> _updateUser_InvalidRequester_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedUser.Id },
+        new object[] { _nonMemberEmployee.Id },
+    };
 
     [Theory]
-    [InlineData(_nonExistingEntityId)]
-    [InlineData(_deletedUser.Id)]
-    public async Task Update_InvalidUser_ThrowsError(int userId,)
-        => await Assert.ThrowsAsync<UnauthorizedException>(
+    [MemberData(nameof(_updateUser_InvalidRequester_Arguments))]
+    public async Task Update_InvalidRequester_ThrowsError(int requesterId)
+        => await Assert.ThrowsAsync<UnauthorizedException>(async () =>
+                await _service.UpdateUserAsync(requesterId, _memberEmployee.Id, _dummyUpdateUserRequest));
+
+    public static readonly IEnumerable<object[]> _updateUser_InvalidUser_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedUser.Id },
+    };
+
+    [Theory]
+    [MemberData(nameof(_updateUser_InvalidUser_Arguments))]
+    public async Task Update_InvalidUser_ThrowsError(int userId)
+        => await Assert.ThrowsAsync<UnauthorizedException>(async () =>
                 await _service.UpdateUserAsync(_admin.Id, userId, _dummyUpdateUserRequest));
 
+    public static readonly IEnumerable<object[]> _updateUser_ValidRequest_Arguments = new List<object[]>
+    {
+        new object[] { _admin.Id },
+        new object[] { _nonMemberEmployee.Id },
+    };
+
     [Theory]
-    [InlineData(_admin.Id)]
-    [InlineData(_nonMemberEmployee.Id)]
+    [MemberData(nameof(_updateUser_ValidRequest_Arguments))]
     public async Task Update_ValidRequest_ReturnsUpdatedUser(int requesterId)
     {
         var result = await Record.ExceptionAsync(
@@ -94,16 +109,16 @@ public class TestUsersService : BaseTestService
         Assert.Null(result);
     }
 
-    [Fact]
-    [InlineData("nonexistinguser@email.com", _usersPassword)]
-    [InlineData(_memberEmployee.Email, "wrong_password")]
-    // user dont exist/wrong email
-    // wrong password
-    public async Task VerifyCredentials_InvalidRequest_ReturnsNull(string email, string password)
+    public static readonly IEnumerable<object[]> _verifyCredentials_InvalidRequest_Arguments = new List<object[]>
     {
-        var result = await _service.VerifyCredentialsAsync(new(email, password));
-        Assert.Null(result);
-    }
+        new object[] { "nonexistinguser@email.com", _usersPassword },
+        new object[] { _memberEmployee.Email, "wrong_password" },
+    };
+
+    [Theory]
+    [MemberData(nameof(_verifyCredentials_InvalidRequest_Arguments))]
+    public async Task VerifyCredentials_InvalidRequest_ReturnsNull(string email, string password)
+        => Assert.Null(await _service.VerifyCredentialsAsync(new(email, password)));
 
     [Fact]
     public async Task VerifyCredentials_ValidRequest_ReturnsUser()
@@ -112,13 +127,17 @@ public class TestUsersService : BaseTestService
                      .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
                      .Returns(true);
 
-        var result = await _service.VerifyCredentialsAsync(new(_memberEmployee.Email, _usersPassword));
-        Assert.NotNull(result);
+        Assert.NotNull(await _service.VerifyCredentialsAsync(new(_memberEmployee.Email, _usersPassword)));
     }
 
+    public static readonly IEnumerable<object[]> _updatePassword_InvalidRequester_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedUser.Id },
+    };
+
     [Theory]
-    [InlineData(_nonExistingEntityId)]
-    [InlineData(_deletedUser.Id)]
+    [MemberData(nameof(_updatePassword_InvalidRequester_Arguments))]
     public async Task UpdatePassword_InvalidRequester_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
                 async () => await _service.UpdatePasswordAsync(requesterId, _dummyUpdatePasswordRequest));
@@ -130,10 +149,8 @@ public class TestUsersService : BaseTestService
                      .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
                      .Returns(true);
 
-        await Assert.ThrowsAsync(
-            async () => await _service.UpdatePasswordAsync(
-                _memberEmployee.Id, 
-                new UpdatePasswordRequest("wrong_password", "new_password")));
+        await Assert.ThrowsAsync<InvalidPasswordException>(
+            async () => await _service.UpdatePasswordAsync(_memberEmployee.Id, new("wrong_password", "new_password")));
     }
 
     [Fact]
@@ -143,7 +160,7 @@ public class TestUsersService : BaseTestService
                      .VerifyCredentialsAsync(_memberEmployee, _usersPassword)
                      .Returns(true);
 
-        var result = Record.ExceptionAsync(
+        var result = await Record.ExceptionAsync(
             async () => await _service.UpdatePasswordAsync(_memberEmployee.Id, _dummyUpdatePasswordRequest));
 
         Assert.Null(result);

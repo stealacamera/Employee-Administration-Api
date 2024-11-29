@@ -10,7 +10,7 @@ public abstract class BaseTestService
 {
     protected readonly IWorkUnit _mockWorkUnit;
 
-    // Dummy Data
+    #region Dummy data
     protected static int _nonExistingEntityId = 0;
     protected static string _usersPassword = "correct_password";
 
@@ -35,6 +35,14 @@ public abstract class BaseTestService
         AppointerUserId = _admin.Id,
         ProjectId = _projectWithOpenTasks.Id
     };
+    #endregion
+
+    public static readonly IEnumerable<object[]> _invalidUsersArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedUser.Id },
+        new object[] { _nonMemberEmployee.Id },
+    };
 
     protected BaseTestService()
     {
@@ -44,13 +52,8 @@ public abstract class BaseTestService
 
     private void MockWorkUnitData()
     {
-        // Add project
         SeedDummyProjects();
-
-        // Add users
         SeedDummyUsers();
-
-        // Add roles
         SeedDummyRoles();
 
         // Add membership
@@ -62,7 +65,6 @@ public abstract class BaseTestService
                      .IsUserMemberAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
                      .Returns(true);
 
-        // Add tasks
         SeedDummyTasks();
     }
 
@@ -85,13 +87,13 @@ public abstract class BaseTestService
         _mockWorkUnit.ProjectsRepository.GetByIdAsync(_projectWithCompletedTasks.Id).Returns(_projectWithCompletedTasks);
         _mockWorkUnit.ProjectsRepository.DoesInstanceExistAsync(_projectWithCompletedTasks.Id).Returns(true);
 
-        _mockWorkUnit.ProjectsRepository.GetByIdAsync(_nonExistingEntityId).Returns(null);
+        _mockWorkUnit.ProjectsRepository.GetByIdAsync(_nonExistingEntityId).Returns(null as Project);
         _mockWorkUnit.ProjectsRepository.DoesInstanceExistAsync(_nonExistingEntityId).Returns(false);
     }
 
     private void SeedDummyTasks()
     {
-        _mockWorkUnit.TasksRepository.GetByIdAsync(_nonExistingEntityId).Returns(null);
+        _mockWorkUnit.TasksRepository.GetByIdAsync(_nonExistingEntityId).Returns(null as Task);
         _mockWorkUnit.TasksRepository.GetByIdAsync(_adminAssignedTask.Id).Returns(_adminAssignedTask);
 
         _mockWorkUnit.TasksRepository
@@ -109,14 +111,14 @@ public abstract class BaseTestService
 
     private void SeedDummyUsers()
     {
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_nonExistingEntityId).Returns(returnThis: null);
+        _mockWorkUnit.UsersRepository.GetByIdAsync(_nonExistingEntityId).Returns(null as User);
         _mockWorkUnit.UsersRepository.DoesUserExistAsync(_nonExistingEntityId).Returns(false);
 
         _mockWorkUnit.UsersRepository.GetByIdAsync(_deletedUser.Id).Returns(_deletedUser);
         _mockWorkUnit.UsersRepository.DoesUserExistAsync(_deletedUser.Id).Returns(true);
         _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_deletedUser.Email, includeDeletedUsers: false).Returns(false);
         _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_deletedUser.Email, includeDeletedUsers: true).Returns(true);
-        _mockWorkUnit.UsersRepository.GetByEmailAsync(_deletedUser.Email).Returns(null);
+        _mockWorkUnit.UsersRepository.GetByEmailAsync(_deletedUser.Email).Returns(null as User);
 
         _mockWorkUnit.UsersRepository.GetByIdAsync(_nonMemberEmployee.Id).Returns(_nonMemberEmployee);
         _mockWorkUnit.UsersRepository.DoesUserExistAsync(_nonMemberEmployee.Id).Returns(true);

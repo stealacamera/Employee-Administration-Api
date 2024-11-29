@@ -71,7 +71,7 @@ internal class ProjectsService : BaseService, IProjectsService
         // Check if requester is an employee
         // If so, they need to be a member of the project
         var requester = await _workUnit.UsersRepository
-                                       .GetByIdAsync(requesterId, cancellationToken);
+                                       .GetByIdAsync(requesterId, cancellationToken: cancellationToken);
 
         if (requester == null)
             throw new UnauthorizedException();
@@ -133,7 +133,7 @@ internal class ProjectsService : BaseService, IProjectsService
                 // Check if user exists and is an employee before adding membership
                 // If not, skip
                 var user = await _workUnit.UsersRepository
-                                          .GetByIdAsync(userId, cancellationToken);
+                                          .GetByIdAsync(userId, cancellationToken: cancellationToken);
 
                 if (user == null)
                     continue;
@@ -174,7 +174,7 @@ internal class ProjectsService : BaseService, IProjectsService
         foreach(var task in taskModels)
         {
             var appointee = (await _workUnit.UsersRepository
-                                            .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken))!;
+                                            .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken: cancellationToken))!;
 
             var appointeeModel = new BriefUser(
                 appointee.Id, appointee.Email,
@@ -187,7 +187,7 @@ internal class ProjectsService : BaseService, IProjectsService
             if (task.AppointeeEmployeeId != task.AppointerUserId)
             {
                 var appointer = (await _workUnit.UsersRepository
-                                                .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken))!;
+                                                .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken: cancellationToken))!;
 
                 appointerModel = new BriefUser(
                     appointee.Id, appointee.Email,
@@ -213,7 +213,7 @@ internal class ProjectsService : BaseService, IProjectsService
         foreach (var membership in memberships)
         {
             var member = (await _workUnit.UsersRepository
-                                         .GetByIdAsync(membership.EmployeeId, cancellationToken))!;
+                                         .GetByIdAsync(membership.EmployeeId, cancellationToken: cancellationToken))!;
 
             members.Add(new BriefUser(
                 member.Id, member.Email, 

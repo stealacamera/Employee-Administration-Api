@@ -12,7 +12,7 @@ internal class ProjectMembersService : BaseService, IProjectMembersService
     public async Task<ProjectMember> AddEmployeeToProjectAsync(int employeeId, int projectId, CancellationToken cancellationToken = default)
     {
         var project = await _workUnit.ProjectsRepository.GetByIdAsync(projectId, cancellationToken);
-        var user = await _workUnit.UsersRepository.GetByIdAsync(employeeId, cancellationToken);
+        var user = await _workUnit.UsersRepository.GetByIdAsync(employeeId, cancellationToken: cancellationToken);
 
         if (project == null)
             throw new EntityNotFoundException(nameof(Project));
@@ -43,7 +43,7 @@ internal class ProjectMembersService : BaseService, IProjectMembersService
     {
         // Check if the employee & the project exist, and if the employee is part of the project
         var project = await _workUnit.ProjectsRepository.GetByIdAsync(projectId, cancellationToken);
-        var user = await _workUnit.UsersRepository.GetByIdAsync(employeeId, cancellationToken);
+        var user = await _workUnit.UsersRepository.GetByIdAsync(employeeId, cancellationToken: cancellationToken);
         var member = await _workUnit.ProjectMembersRepository.GetByIdsAsync(employeeId, projectId, cancellationToken);
 
         if (project == null)

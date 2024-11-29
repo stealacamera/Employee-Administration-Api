@@ -1,8 +1,7 @@
-﻿using EmployeeAdministration.Application.Abstractions;
-using EmployeeAdministration.Application.Common.Exceptions;
+﻿using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Application.Services;
-using EmployeeAdministration.Domain.Entities;
 using NSubstitute;
+using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
 
@@ -18,11 +17,16 @@ public class TestProjectMembersService : BaseTestService
         => await Assert.ThrowsAsync<EntityNotFoundException>(
             async () => await _service.AddEmployeeToProjectAsync(_nonMemberEmployee.Id, 0));
 
+    public static readonly IEnumerable<object[]> _addEmployeeToProjectArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _admin.Id, typeof(NonEmployeeUserException) },
+        new object[] { _memberEmployee.Id, typeof(ExistingProjectMemberException) },
+    };
+
     [Theory]
-    [InlineData(_nonExistingEntityId, EntityNotFoundException)]
-    [InlineData(_deletedUser.Id, EntityNotFoundException)]
-    [InlineData(_admin.Id, NonEmployeeUserException)]
-    [InlineData(_memberEmployee.Id, ExistingProjectMemberException)]
+    [MemberData(nameof(_addEmployeeToProjectArguments))]
     public async Task AddEmployeeToProject_UserIsInvalid_ThrowsError(int employeeId, Type exceptionTypeExpected)
         => await Assert.ThrowsAsync(
                 exceptionTypeExpected, 
@@ -40,13 +44,18 @@ public class TestProjectMembersService : BaseTestService
     [Fact]
     public async Task RemoveEmployeeFromProject_ProjectDoesntExist_ThrowsError()
         => await Assert.ThrowsAsync<EntityNotFoundException>(
-                async () => await _service.RemoveEmployeeFromProjectAsync(_nonMemberEmployee.Id, 0));
+                async () => await _service.RemoveEmployeeFromProjectAsync(_nonMemberEmployee.Id, _nonExistingEntityId));
+
+    public static readonly IEnumerable<object[]> _removeEmployeeFromProjectArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _nonMemberEmployee.Id, typeof(EntityNotFoundException) },
+        new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
+    };
 
     [Theory]
-    [InlineData(_nonExistingEntityId, EntityNotFoundException)]
-    [InlineData(_deletedUser.Id, EntityNotFoundException)]
-    [InlineData(_nonMemberEmployee.Id, EntityNotFoundException)]
-    [InlineData(_memberEmployee.Id, UncompletedTasksAssignedToEntityException)]
+    [MemberData(nameof(_removeEmployeeFromProjectArguments))]
     public async Task RemoveEmployeeFromProject_UserIsInvalid_ThrowsError(int employeeId, Type exceptionTypeExpected)
         => await Assert.ThrowsAsync(
                 exceptionTypeExpected,

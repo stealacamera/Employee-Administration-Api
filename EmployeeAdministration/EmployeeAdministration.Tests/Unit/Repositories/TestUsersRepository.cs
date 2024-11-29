@@ -1,144 +1,178 @@
 ﻿using EmployeeAdministration.Domain.Entities;
 using EmployeeAdministration.Domain.Enums;
-using EmployeeAdministration.Infrastructure;
 using EmployeeAdministration.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Distributed;
-using Testcontainers.MsSql;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Tests.Unit.Repositories;
 
-public class TestUsersRepository
+public class TestUsersRepository : BaseTestRepository
 {
-    private readonly MsSqlContainer _dbContainer = new MsSqlBuilder().Build();
+    private readonly UsersRepository _repository;
 
-    private readonly AppDbContext _dbContext;
-    private readonly UsersRepository _usersRepository;
-
-    private User _employee, _deletedEmployee, _admin, _deletedAdmin;
-    private User[] _allUsers, _undeletedUsers, _deletedUsers;
-
-    public TestUsersRepository(UserManager<User> userManager, IDistributedCache distributedCache)
+    public TestUsersRepository(IServiceProvider serviceProvider) : base()
     {
-        _usersRepository = new UsersRepository(userManager, distributedCache);
+        CreateContext();
 
-        SeedDummyData();
+        _repository = new UsersRepository(
+            serviceProvider.GetRequiredService<UserManager<User>>(), 
+            Substitute.For<IDistributedCache>());
     }
-
-    private void SeedDummyData()
+    
+    [Theory]
+    [MemberData(nameof(_existingUsers))]
+    public async Task DoesUserExist_UserExists_ReturnsTrue(User user)
     {
-        var users = new[] {
-            (_employee, Roles.Employee, false),
-            (_deletedEmployee, Roles.Employee, true),
-            (_admin, Roles.Administrator, false),
-            (_deletedAdmin, Roles.Administrator, true)
-        };
-
-        for (int i = 0; i < users.Length; i++)
-        {
-            users[i].Item1 = _dbContext.Users
-                             .Add(new User
-                             {
-                                 Id = i + 1,
-                                 UserName = $"user-{i}",
-                                 FirstName = "name",
-                                 Surname = "surname",
-                                 DeletedAt = users[i].Item3 ? DateTime.UtcNow : null
-                             })
-                             .Entity;
-
-            _dbContext.UserRoles
-                      .Add(new IdentityUserRole<int>
-                      {
-                          UserId = users[i].Item1.Id,
-                          RoleId = (int)users[i].Item2
-                      });
-        }
-
-        _allUsers = [_employee, _deletedEmployee, _admin, _deletedAdmin];
-        _undeletedUsers = [_employee, _admin];
-        _deletedUsers = [_deletedEmployee, _deletedAdmin];
-    }
-
-    [Fact]
-    public async Task DoesUserExist_UserExists_ReturnsTrue()
-    {
-        var result = await _usersRepository.DoesUserExistAsync(_employee.Id);
+        var result = await _repository.DoesUserExistAsync(user.Id);
         Assert.True(result);
     }
 
-    [Fact]
-    public async Task DoesUserExistExcludeDeleted_UserIsSoftDeleted_ReturnsFalse()
+    [Theory]
+    [MemberData(nameof(_deletedUsers))]
+    public async Task DoesUserExistExcludeDeleted_UserIsSoftDeleted_ReturnsFalse(User user)
     {
-        var result = await _usersRepository.DoesUserExistAsync(_deletedEmployee.Id, includeDeletedUsers: false);
+        var result = await _repository.DoesUserExistAsync(user.Id, includeDeletedUsers: false);
         Assert.False(result);
     }
 
-    [Fact]
-    public async Task DoesUserExistIncludeDeleted_UserIsSoftDeleted_ReturnsTrue()
+    [Theory]
+    [MemberData(nameof(_deletedUsers))]
+    public async Task DoesUserExistIncludeDeleted_UserIsSoftDeleted_ReturnsTrue(User user)
     {
-        var result = await _usersRepository.DoesUserExistAsync(_deletedEmployee.Id, includeDeletedUsers: true);
+        var result = await _repository.DoesUserExistAsync(user.Id, includeDeletedUsers: true);
         Assert.True(result);
     }
 
     [Fact]
     public async Task DoesUserExist_UserDoesntExist_ReturnsFalse()
     {
-        var result = await _usersRepository.DoesUserExistAsync(ushort.MaxValue);
+        var result = await _repository.DoesUserExistAsync(ushort.MaxValue);
         Assert.False(result);
     }
 
+    public static readonly IEnumerable<object[]> _getAllUsersExcludeDeleted = new List<object[]> {
+        new object[] { null, Array.Empty<User>() },
+        new object[] { Roles.Employee, new[] { _employee } },
+        new object[] { Roles.Administrator, new[] { _admin } },
+    };
+
     [Theory]
-    //[InlineData(null, _undeletedUsers)]
-    //[InlineData(Roles.Employee, new[] { _employee })]
-    //[InlineData(Roles.Administrator, new[] { _admin })]
+    [MemberData(nameof(_getAllUsersExcludeDeleted))]
     public async Task GetAllAsync_ExcludeDeleted_ReturnsUndeletedUsers(Roles? role, User[] expectedResult)
     {
-        var result = await _usersRepository.GetAllAsync(includeDeletedUsers: false, filterByRole: role);
+        var result = await _repository.GetAllAsync(includeDeletedUsers: false, filterByRole: role);
 
         Assert.Equal(expectedResult.Length, result.Count());
         Assert.Equal(expectedResult.Select(e => e.Id).ToArray(), result.Select(e => e.Id).ToArray());
     }
 
+    public static readonly IEnumerable<object[]> _getAllUsersIncludeDeleted = new List<object[]> {
+        new object[] { null, new[] { _employee, _deletedEmployee, _admin, _deletedAdmin } },
+        new object[] { Roles.Employee, new[] { _employee, _deletedEmployee } },
+        new object[] { Roles.Administrator, new[] { _admin, _deletedAdmin } },
+    };
+
     [Theory]
-    //[InlineData(null, _allUsers)]
-    //[InlineData(Roles.Employee, )]
-    //[InlineData(Roles.Administrator)]
+    [MemberData(nameof(_getAllUsersIncludeDeleted))]
     public async Task GetAllAsync_IncludeDeleted_ReturnsUndeletedUsers(Roles? role, User[] expectedResult)
     {
-        var result = await _usersRepository.GetAllAsync(includeDeletedUsers: true, filterByRole: role);
+        var result = await _repository.GetAllAsync(includeDeletedUsers: true, filterByRole: role);
 
-        Assert.Equal(, result.Count());
-        Assert.Equal(, result.Select(e => e.Id).ToArray());
+        Assert.Equal(expectedResult.Length, result.Count());
+        Assert.Equal(expectedResult.Select(e => e.Id).ToArray(), result.Select(e => e.Id).ToArray());
     }
 
     // IsEmailInUse
     // user != null
     // user.del + ex/include
     // null
-
-    public async Task IsEmailInUse_UserExists_ReturnsTrue()
+    [Theory]
+    [MemberData(nameof(_existingUsers))]
+    public async Task IsEmailInUse_UserExists_ReturnsTrue(User user)
     {
-        var result = await _usersRepository.IsEmailInUseAsync(_employee.Email);
+        var result = await _repository.IsEmailInUseAsync(user.Email!);
         Assert.True(result);
     }
 
+    [Fact]
     public async Task IsEmailInUse_UserDoesntExist_ReturnsFalse()
     {
-        var result = await _usersRepository.IsEmailInUseAsync("nonexistinguser@email.com");
+        var result = await _repository.IsEmailInUseAsync("nonexistinguser@email.com");
         Assert.False(result);
     }
 
-    public async Task IsEmailInUseIncludeDeleted_UserIsSoftDeleted_ReturnsTrue()
+    [Theory]
+    [MemberData(nameof(_deletedUsers))]
+    public async Task IsEmailInUseIncludeDeleted_UserIsSoftDeleted_ReturnsTrue(User user)
     {
-        var result = await _usersRepository.IsEmailInUseAsync(_deletedAdmin.Email, includeDeletedUsers: true);
+        var result = await _repository.IsEmailInUseAsync(user.Email!, includeDeletedUsers: true);
         Assert.True(result);
     }
 
-    public async Task IsEmailInUseExcludeDeleted_UserIsSoftDeleted_ReturnsFalse()
+    [Theory]
+    [MemberData(nameof(_deletedUsers))]
+    public async Task IsEmailInUseExcludeDeleted_UserIsSoftDeleted_ReturnsFalse(User user)
     {
-        var result = await _usersRepository.IsEmailInUseAsync(_deletedAdmin.Email, includeDeletedUsers: false);
+        var result = await _repository.IsEmailInUseAsync(user.Email!, includeDeletedUsers: false);
         Assert.False(result);
+    }
+
+    public static readonly IEnumerable<object[]> _getUserExcludeDeleted = new List<object[]> {
+        new object[] { _deletedAdmin, null },
+        new object[] { _deletedEmployee, null },
+    };
+
+    public static readonly IEnumerable<object[]> _getUserIncludeDeleted = new List<object[]> {
+        new object[] { _deletedAdmin, _deletedAdmin },
+        new object[] { _deletedEmployee, _deletedEmployee },
+    };
+
+    public static readonly IEnumerable<object[]> _getUser = new List<object[]>
+    {
+        new object[] { _admin, _admin },
+        new object[] { _employee, _employee }
+    };
+
+    [Theory]
+    [MemberData(nameof(_getUser))]
+    [MemberData(nameof(_getUserExcludeDeleted))]
+    public async Task GetByEmail_ExcludeDeleted_GetExistingUsers(User user, User? expectedUser)
+    {
+        var result = await _repository.GetByEmailAsync(user.Email!, excludeDeletedUser: true);
+        Assert.Equal(expectedUser, result);
+    }
+
+    [Theory]
+    [MemberData(nameof(_getUser))]
+    [MemberData(nameof(_getUserIncludeDeleted))]
+    public async Task GetByEmail_IncludeDeleted_GetAllUsers(User user, User? expectedUser)
+    {
+        var result = await _repository.GetByEmailAsync(user.Email!, excludeDeletedUser: false);
+        Assert.Equal(expectedUser, result);
+    }
+
+    [Fact]
+    public async Task GetById_NonexistingUser_ReturnsNull()
+        => Assert.Null(await _repository.GetByIdAsync(ushort.MaxValue));
+
+    [Theory]
+    [MemberData(nameof(_getUser))]
+    [MemberData(nameof(_getUserExcludeDeleted))]
+    public async Task GetById_ExcludeDeletedUsers_ReturnsExistingUsers(User user, User? expectedUser)
+    {
+        var result = await _repository.GetByIdAsync(user.Id);
+        Assert.Equal(expectedUser, result);
+    }
+
+    [Theory]
+    [MemberData(nameof(_getUser))]
+    [MemberData(nameof(_getUserIncludeDeleted))]
+    public async Task GetById_IncludeDeletedUsers_ReturnsAllUsers(User user, User? expectedUser)
+    {
+        var result = await _repository.GetByIdAsync(user.Id);
+        Assert.Equal(expectedUser, result);
     }
 }
