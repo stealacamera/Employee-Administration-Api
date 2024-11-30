@@ -6,6 +6,33 @@ public class TestTasksRepository : BaseTestRepository
 {
     private TasksRepository _repository = null!;
 
+    public static readonly IEnumerable<object[]> 
+        _userHasOpenTasksArguments = new List<object[]>
+    {
+        new object[] { _employee.Id, _openProject.Id },
+        new object[] { _employee.Id, null },
+    },
+        _userHasNoOpenTasksArguments = new List<object[]>
+    {
+        new object[] { _employee.Id, _finishedProject.Id },
+        new object[] { _deletedEmployee.Id, null },
+    },
+        _getProjectTasksArguments = new List<object[]>
+    {
+        new object[] { _openProject.Id, new[] { _openTask } },
+        new object[] { _finishedProject.Id, new[] { _finishedTask } },
+    },
+        _userHasNoTasksArguments = new List<object[]>
+    {
+        new object[] { _employee.Id, _pausedProject.Id },
+        new object[] { _deletedEmployee.Id, null },
+    },
+        _userHasTasksArguments = new List<object[]>
+    {
+        new object[] { _employee.Id, _openProject.Id, new[] { _openTask } },
+        new object[] { _employee.Id, null, new[] { _openTask, _finishedTask } },
+    };
+
     [Fact]
     public async Task DoesProjectHaveOpenTasks_NoOpenTasks_ReturnsFalse()
     {
@@ -33,14 +60,8 @@ public class TestTasksRepository : BaseTestRepository
         Assert.False(await _repository.DoesProjectHaveOpenTasksAsync(_pausedProject.Id));
     }
 
-    public static readonly IEnumerable<object[]> _userHasOpenTasks = new List<object[]>
-    {
-        new object[] { _employee.Id, _openProject.Id },
-        new object[] { _employee.Id, null },
-    };
-
     [Theory]
-    [MemberData(nameof(_userHasNoOpenTasks))]
+    [MemberData(nameof(_userHasNoOpenTasksArguments))]
     public async Task DoesUserHaveOpenTasks_NoOpenTasks_ReturnsFalse(int userId, int? projectId)
     {
         using var context = CreateContext();
@@ -49,14 +70,8 @@ public class TestTasksRepository : BaseTestRepository
         Assert.False(await _repository.DoesUserHaveOpenTasksAsync(userId, projectId: projectId));
     }
 
-    public static readonly IEnumerable<object[]> _userHasNoOpenTasks = new List<object[]>
-    {
-        new object[] { _employee.Id, _finishedProject.Id },
-        new object[] { _deletedEmployee.Id, null },
-    };
-
     [Theory]
-    [MemberData(nameof(_userHasOpenTasks))]
+    [MemberData(nameof(_userHasOpenTasksArguments))]
     public async Task DoesUserHaveOpenTasks_HasOpenTasks_ReturnsTrue(int userId, int? projectId)
     {
         using var context = CreateContext();
@@ -74,12 +89,6 @@ public class TestTasksRepository : BaseTestRepository
         Assert.Empty(await _repository.GetAllForProjectAsync(_pausedProject.Id));
     }
 
-    public static readonly IEnumerable<object[]> _getProjectTasksArguments = new List<object[]>
-    {
-        new object[] { _openProject.Id, new[] { _openTask } },
-        new object[] { _finishedProject.Id, new[] { _finishedTask } },
-    };
-
     [Theory]
     [MemberData(nameof(_getProjectTasksArguments))]
     public async Task GetAllForProject_HasTasks_ReturnsTasksList(int projectId, Domain.Entities.Task[] expectedResult)
@@ -88,19 +97,16 @@ public class TestTasksRepository : BaseTestRepository
         _repository = new TasksRepository(context);
 
         var result = await _repository.GetAllForProjectAsync(projectId);
-        
+        var resultIds = result.Select(e => e.Id).ToArray();
+
         Assert.Equal(expectedResult.Length, result.Count());
-        Assert.Equal(expectedResult.Select(e => e.Id).ToArray(), result.Select(e => e.Id).ToArray());
+
+        foreach (var item in expectedResult)
+            Assert.Contains(item.Id, resultIds);
     }
 
-    public static readonly IEnumerable<object[]> _getUserTasks_ReturnsEmpty_Arguments = new List<object[]>
-    {
-        new object[] { _employee.Id, _pausedProject.Id },
-        new object[] { _deletedEmployee.Id, null },
-    };
-
     [Theory]
-    [MemberData(nameof(_getUserTasks_ReturnsEmpty_Arguments))]
+    [MemberData(nameof(_userHasNoTasksArguments))]
     public async Task GetAllForUser_NoTasks_ReturnsEmptyList(int userId, int? projectId)
     {
         using var context = CreateContext();
@@ -109,14 +115,8 @@ public class TestTasksRepository : BaseTestRepository
         Assert.Empty(await _repository.GetAllForUserAsync(userId, projectId));
     }
 
-    public static readonly IEnumerable<object[]> _getUserTasks_ReturnsTasks_Arguments = new List<object[]>
-    {
-        new object[] { _employee.Id, _openProject.Id, new[] { _openTask } },
-        new object[] { _employee.Id, null, new[] { _openTask, _finishedTask } },
-    };
-
     [Theory]
-    [MemberData(nameof(_getUserTasks_ReturnsTasks_Arguments))]
+    [MemberData(nameof(_userHasTasksArguments))]
     public async Task GetAllForUser_HasTasks_ReturnsTasks(int userId, int? projectId, Domain.Entities.Task[] expectedResult)
     {
         using var context = CreateContext();

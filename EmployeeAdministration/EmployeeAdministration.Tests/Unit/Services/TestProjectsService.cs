@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using EmployeeAdministration.Application.Common.DTOs;
+﻿using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Application.Services;
 using Task = System.Threading.Tasks.Task;
@@ -14,11 +13,23 @@ public class TestProjectsService : BaseTestService
     public TestProjectsService() : base()
         => _service = new(_mockWorkUnit);
 
-    public static readonly IEnumerable<object[]> _createProject_InvalidMember_Arguments = new List<object[]>
+    public static readonly IEnumerable<object[]> 
+        _createProject_InvalidMember_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
         new object[] { _deletedEmployee.Id },
         new object[] { _admin.Id },
+    },
+        _deleteProject_InvalidProject_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _projectWithOpenTasks.Id, typeof(UncompletedTasksAssignedToEntityException) },
+    },
+        _getById_InvalidRequester_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedEmployee.Id },
+        new object[] { _nonMemberEmployee.Id },
     };
 
     [Theory]
@@ -38,12 +49,6 @@ public class TestProjectsService : BaseTestService
         Assert.Equal(_nonMemberEmployee.Id, result.Members[0].Id);
     }
 
-    public static readonly IEnumerable<object[]> _deleteProject_InvalidProject_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _projectWithOpenTasks.Id, typeof(UncompletedTasksAssignedToEntityException) },
-    };
-
     [Theory]
     [MemberData(nameof(_deleteProject_InvalidProject_Arguments))]
     public async Task Delete_ProjectIsInvalid_ThrowsError(int projectId, Type exceptionExpected)
@@ -58,13 +63,6 @@ public class TestProjectsService : BaseTestService
 
         Assert.Null(result);
     }
-
-    public static readonly IEnumerable<object[]> _getById_InvalidRequester_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId },
-        new object[] { _deletedEmployee.Id },
-        new object[] { _nonMemberEmployee.Id },
-    };
 
     [Theory]
     [MemberData(nameof(_getById_InvalidRequester_Arguments))]

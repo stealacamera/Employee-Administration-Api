@@ -1,5 +1,4 @@
 ﻿using EmployeeAdministration.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Tests.Unit.Repositories;

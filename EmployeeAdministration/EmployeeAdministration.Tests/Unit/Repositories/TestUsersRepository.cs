@@ -18,6 +18,45 @@ public class TestUsersRepository : BaseTestRepository
     private UsersRepository _repository = null!;
     private readonly IServiceCollection _services = new ServiceCollection();
 
+    public static readonly IEnumerable<object[]>
+        _deletedUsers = new List<object[]>() 
+    {
+        new object[] { _deletedAdmin }, 
+        new object[] { _deletedEmployee } 
+    },
+        _existingUsers = new List<object[]>() 
+    { 
+        new object[] { _admin }, 
+        new object[] { _employee } 
+    },
+    _getAllUsersExcludeDeletedArguments = new List<object[]>
+    {
+        new object[] { null, new[] { _employee, _admin } },
+        new object[] { Roles.Employee, new[] { _employee } },
+        new object[] { Roles.Administrator, new[] { _admin } },
+    },
+        _getAllUsersIncludeDeletedArguments = new List<object[]>
+    {
+        new object[] { null, new[] { _employee, _deletedEmployee, _admin, _deletedAdmin } },
+        new object[] { Roles.Employee, new[] { _employee, _deletedEmployee } },
+        new object[] { Roles.Administrator, new[] { _admin, _deletedAdmin } },
+    },
+        _getUserExcludeDeletedArguments = new List<object[]>
+    {
+        new object[] { _deletedAdmin, null },
+        new object[] { _deletedEmployee, null },
+    },
+        _getUserIncludeDeletedArguments = new List<object[]>
+    {
+        new object[] { _deletedAdmin, _deletedAdmin },
+        new object[] { _deletedEmployee, _deletedEmployee },
+    },
+        _getExistingUserArguments = new List<object[]>
+    {
+        new object[] { _admin, _admin },
+        new object[] { _employee, _employee }
+    };
+
     public TestUsersRepository() : base()
     {
         _services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
@@ -82,14 +121,8 @@ public class TestUsersRepository : BaseTestRepository
         Assert.False(result);
     }
 
-    public static readonly IEnumerable<object[]> _getAllUsersExcludeDeleted = new List<object[]> {
-        new object[] { null, new[] { _employee, _admin } },
-        new object[] { Roles.Employee, new[] { _employee } },
-        new object[] { Roles.Administrator, new[] { _admin } },
-    };
-
     [Theory]
-    [MemberData(nameof(_getAllUsersExcludeDeleted))]
+    [MemberData(nameof(_getAllUsersExcludeDeletedArguments))]
     public async Task GetAllAsync_ExcludeDeleted_ReturnsUndeletedUsers(Roles? role, User[] expectedResult)
     {
         using var context = CreateContext();
@@ -104,14 +137,8 @@ public class TestUsersRepository : BaseTestRepository
             Assert.Contains(item.Id, resultIds);
     }
 
-    public static readonly IEnumerable<object[]> _getAllUsersIncludeDeleted = new List<object[]> {
-        new object[] { null, new[] { _employee, _deletedEmployee, _admin, _deletedAdmin } },
-        new object[] { Roles.Employee, new[] { _employee, _deletedEmployee } },
-        new object[] { Roles.Administrator, new[] { _admin, _deletedAdmin } },
-    };
-
     [Theory]
-    [MemberData(nameof(_getAllUsersIncludeDeleted))]
+    [MemberData(nameof(_getAllUsersIncludeDeletedArguments))]
     public async Task GetAllAsync_IncludeDeleted_ReturnsUndeletedUsers(Roles? role, User[] expectedResult)
     {
         using var context = CreateContext();
@@ -169,25 +196,9 @@ public class TestUsersRepository : BaseTestRepository
         Assert.False(result);
     }
 
-    public static readonly IEnumerable<object[]> _getUserExcludeDeleted = new List<object[]> {
-        new object[] { _deletedAdmin, null },
-        new object[] { _deletedEmployee, null },
-    };
-
-    public static readonly IEnumerable<object[]> _getUserIncludeDeleted = new List<object[]> {
-        new object[] { _deletedAdmin, _deletedAdmin },
-        new object[] { _deletedEmployee, _deletedEmployee },
-    };
-
-    public static readonly IEnumerable<object[]> _getUser = new List<object[]>
-    {
-        new object[] { _admin, _admin },
-        new object[] { _employee, _employee }
-    };
-
     [Theory]
-    [MemberData(nameof(_getUser))]
-    [MemberData(nameof(_getUserExcludeDeleted))]
+    [MemberData(nameof(_getExistingUserArguments))]
+    [MemberData(nameof(_getUserExcludeDeletedArguments))]
     public async Task GetByEmail_ExcludeDeleted_GetExistingUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
@@ -198,8 +209,8 @@ public class TestUsersRepository : BaseTestRepository
     }
 
     [Theory]
-    [MemberData(nameof(_getUser))]
-    [MemberData(nameof(_getUserIncludeDeleted))]
+    [MemberData(nameof(_getExistingUserArguments))]
+    [MemberData(nameof(_getUserIncludeDeletedArguments))]
     public async Task GetByEmail_IncludeDeleted_GetAllUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
@@ -219,8 +230,8 @@ public class TestUsersRepository : BaseTestRepository
     }
 
     [Theory]
-    [MemberData(nameof(_getUser))]
-    [MemberData(nameof(_getUserExcludeDeleted))]
+    [MemberData(nameof(_getExistingUserArguments))]
+    [MemberData(nameof(_getUserExcludeDeletedArguments))]
     public async Task GetById_ExcludeDeletedUsers_ReturnsExistingUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
@@ -231,8 +242,8 @@ public class TestUsersRepository : BaseTestRepository
     }
 
     [Theory]
-    [MemberData(nameof(_getUser))]
-    [MemberData(nameof(_getUserIncludeDeleted))]
+    [MemberData(nameof(_getExistingUserArguments))]
+    [MemberData(nameof(_getUserIncludeDeletedArguments))]
     public async Task GetById_IncludeDeletedUsers_ReturnsAllUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();

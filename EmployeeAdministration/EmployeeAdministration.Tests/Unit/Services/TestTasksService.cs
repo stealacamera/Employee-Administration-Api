@@ -12,6 +12,31 @@ public class TestTasksService : BaseTestService
     private readonly UpdateTaskRequest _dummyUpdateRequest = new("Test name");
     private readonly CreateTaskRequest _dummyCreateRequest = new(_memberEmployee.Id, "Test name");
 
+    public static readonly IEnumerable<object[]> 
+        _invalidUsersArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedEmployee.Id },
+        new object[] { _nonMemberEmployee.Id },
+    }, 
+        _create_InvalidAppointee_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
+        new object[] { _admin.Id, typeof(NonEmployeeUserException) },
+        new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
+    },
+        _validUserArguments = new List<object[]>
+    {
+        new object[] { _admin.Id },
+        new object[] { _memberEmployee.Id },
+    },
+        _validTaskRequesterArguments = new List<object[]>
+    {
+        new object[] { _admin.Id },
+        new object[] { _adminAssignedTask.AppointeeEmployeeId },
+    };
+
     public TestTasksService() : base()
         => _service = new TasksService(_mockWorkUnit);
 
@@ -20,14 +45,6 @@ public class TestTasksService : BaseTestService
     public async Task Create_AppointerIsInvalid_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
                 async () => await _service.CreateAsync(requesterId, _projectWithOpenTasks.Id, _dummyCreateRequest));
-
-    public static readonly IEnumerable<object[]> _create_InvalidAppointee_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
-        new object[] { _admin.Id, typeof(NonEmployeeUserException) },
-        new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
-    };
 
     [Theory]
     [MemberData(nameof(_create_InvalidAppointee_Arguments))]
@@ -68,24 +85,11 @@ public class TestTasksService : BaseTestService
         Assert.Null(result);
     }
 
-    public static readonly IEnumerable<object[]> _getAllForProject_InvalidRequester_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId },
-        new object[] { _deletedEmployee.Id },
-        new object[] { _nonMemberEmployee.Id },
-    };
-
     [Theory]
-    [MemberData(nameof(_getAllForProject_InvalidRequester_Arguments))]
+    [MemberData(nameof(_invalidUsersArguments))]
     public async Task GetAllForProject_InvalidRequester_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
                 async () => await _service.GetAllForProjectAsync(requesterId, _projectWithOpenTasks.Id));
-
-    public static readonly IEnumerable<object[]> _validUserArguments = new List<object[]>
-    {
-        new object[] { _admin.Id },
-        new object[] { _memberEmployee.Id },
-    };
 
     [Theory]
     [MemberData(nameof(_validUserArguments))]
@@ -108,12 +112,6 @@ public class TestTasksService : BaseTestService
     public async Task GetById_TaskDoesntExist_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<EntityNotFoundException>(
                 async () => await _service.GetByIdAsync(requesterId, _nonExistingEntityId));
-
-    public static readonly IEnumerable<object[]> _validTaskRequesterArguments = new List<object[]>
-    {
-        new object[] { _admin.Id },
-        new object[] { _adminAssignedTask.AppointeeEmployeeId },
-    };
 
     [Theory]
     [MemberData(nameof(_validTaskRequesterArguments))]

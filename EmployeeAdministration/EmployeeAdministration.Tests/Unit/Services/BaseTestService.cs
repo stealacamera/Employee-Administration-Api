@@ -15,14 +15,15 @@ public abstract class BaseTestService
     protected static string _usersPassword = "correct_password";
 
     protected static User
-        _deletedEmployee = new User { Id = 4, Email = "deleted@email.com", DeletedAt = DateTime.UtcNow },
         _nonMemberEmployee = new User { Id = 1, Email = "user1@email.com" },
         _memberEmployee = new User { Id = 2, Email = "user2@email.com" },
-        _deletedAdmin = new() { Id = 5, Email = "deletedadmin@email.com", DeletedAt = DateTime.UtcNow },
-        _admin = new User { Id = 3, Email = "admin@email.com" };
+        _admin = new User { Id = 3, Email = "admin@email.com" },
+        _deletedEmployee = new User { Id = 4, Email = "deleted@email.com", DeletedAt = DateTime.UtcNow },
+        _deletedAdmin = new() { Id = 5, Email = "deletedadmin@email.com", DeletedAt = DateTime.UtcNow };
 
-    protected static Project _projectWithOpenTasks = new Project { Id = 1, StatusId = ProjectStatuses.InProgress.Id },
-                             _projectWithCompletedTasks = new Project { Id = 2, StatusId = ProjectStatuses.InProgress.Id };
+    protected static Project
+        _projectWithOpenTasks = new Project { Id = 1, StatusId = ProjectStatuses.InProgress.Id },
+        _projectWithCompletedTasks = new Project { Id = 2, StatusId = ProjectStatuses.InProgress.Id };
 
     protected static ProjectMember
         _openTasksMembership = new()
@@ -39,18 +40,11 @@ public abstract class BaseTestService
     protected static Task _adminAssignedTask = new Task
     {
         Id = 1,
+        ProjectId = _projectWithOpenTasks.Id,
         AppointeeEmployeeId = _memberEmployee.Id,
         AppointerUserId = _admin.Id,
-        ProjectId = _projectWithOpenTasks.Id
     };
     #endregion
-
-    public static readonly IEnumerable<object[]> _invalidUsersArguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId },
-        new object[] { _deletedEmployee.Id },
-        new object[] { _nonMemberEmployee.Id },
-    };
 
     protected BaseTestService()
     {
@@ -69,48 +63,52 @@ public abstract class BaseTestService
 
     private void SeedDummyMemberships()
     {
-        _mockWorkUnit.ProjectMembersRepository
-                     .GetByIdsAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
-                     .Returns(_openTasksMembership);
+        var data = new[]
+        {
+            (_memberEmployee, _projectWithOpenTasks, _openTasksMembership),
+            (_memberEmployee, _projectWithCompletedTasks, _completedTasksMembership)
+        };
 
-        _mockWorkUnit.ProjectMembersRepository
-                     .IsUserMemberAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
-                     .Returns(true);
+        foreach (var (user, project, membership) in data)
+        {
+            _mockWorkUnit.ProjectMembersRepository
+                         .GetByIdsAsync(user.Id, project.Id)
+                         .Returns(membership);
 
-        _mockWorkUnit.ProjectMembersRepository
-                     .GetByIdsAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
-                     .Returns(_completedTasksMembership);
-
-        _mockWorkUnit.ProjectMembersRepository
-                     .IsUserMemberAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
-                     .Returns(true);
+            _mockWorkUnit.ProjectMembersRepository
+                         .IsUserMemberAsync(user.Id, project.Id)
+                         .Returns(true);
+        }
     }
 
     private void SeedDummyRoles()
     {
-        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_admin).Returns(Roles.Administrator);
-        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_nonMemberEmployee).Returns(Roles.Employee);
-        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_memberEmployee).Returns(Roles.Employee);
-        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_deletedEmployee).Returns(Roles.Employee);
-        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_deletedAdmin).Returns(Roles.Administrator);
+        var userRoles = new[]
+        {
+            (_admin, Roles.Administrator),
+            (_deletedAdmin, Roles.Administrator),
+            (_deletedEmployee, Roles.Employee),
+            (_memberEmployee, Roles.Employee),
+            (_nonMemberEmployee, Roles.Employee),
+        };
 
-        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_admin, Roles.Administrator).Returns(true);
-        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_deletedAdmin, Roles.Administrator).Returns(true);
-        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_deletedEmployee, Roles.Employee).Returns(true);
-        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_nonMemberEmployee, Roles.Employee).Returns(true);
-        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_memberEmployee, Roles.Employee).Returns(true);
+        foreach (var (user, role) in userRoles)
+        {
+            _mockWorkUnit.UsersRepository.GetUserRoleAsync(user).Returns(role);
+            _mockWorkUnit.UsersRepository.IsUserInRoleAsync(user, role).Returns(true);
+        }
     }
 
     private void SeedDummyProjects()
     {
-        _mockWorkUnit.ProjectsRepository.GetByIdAsync(_projectWithOpenTasks.Id).Returns(_projectWithOpenTasks);
-        _mockWorkUnit.ProjectsRepository.DoesInstanceExistAsync(_projectWithOpenTasks.Id).Returns(true);
-
-        _mockWorkUnit.ProjectsRepository.GetByIdAsync(_projectWithCompletedTasks.Id).Returns(_projectWithCompletedTasks);
-        _mockWorkUnit.ProjectsRepository.DoesInstanceExistAsync(_projectWithCompletedTasks.Id).Returns(true);
-
         _mockWorkUnit.ProjectsRepository.GetByIdAsync(_nonExistingEntityId).Returns(null as Project);
         _mockWorkUnit.ProjectsRepository.DoesInstanceExistAsync(_nonExistingEntityId).Returns(false);
+        
+        foreach (var project in new[] { _projectWithOpenTasks, _projectWithCompletedTasks })
+        {
+            _mockWorkUnit.ProjectsRepository.GetByIdAsync(project.Id).Returns(project);
+            _mockWorkUnit.ProjectsRepository.DoesInstanceExistAsync(project.Id).Returns(true);
+        }
     }
 
     private void SeedDummyTasks()
@@ -122,21 +120,22 @@ public abstract class BaseTestService
                      .DoesUserHaveOpenTasksAsync(_memberEmployee.Id)
                      .Returns(true);
 
-        _mockWorkUnit.TasksRepository
-                     .DoesUserHaveOpenTasksAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id)
-                     .Returns(false);
+        var data = new[] 
+        { 
+            (_memberEmployee, _projectWithOpenTasks, true), 
+            (_memberEmployee, _projectWithCompletedTasks, false) 
+        };
 
-        _mockWorkUnit.TasksRepository
-                     .DoesUserHaveOpenTasksAsync(_memberEmployee.Id, _projectWithOpenTasks.Id)
-                     .Returns(true);
+        foreach (var (user, project, hasOpenTasks) in data)
+        {
+            _mockWorkUnit.TasksRepository
+                         .DoesUserHaveOpenTasksAsync(user.Id, project.Id)
+                         .Returns(hasOpenTasks);
 
-        _mockWorkUnit.TasksRepository
-                     .DoesProjectHaveOpenTasksAsync(_projectWithOpenTasks.Id)
-                     .Returns(true);
-
-        _mockWorkUnit.TasksRepository
-                     .DoesProjectHaveOpenTasksAsync(_projectWithCompletedTasks.Id)
-                     .Returns(false);
+            _mockWorkUnit.TasksRepository
+                         .DoesProjectHaveOpenTasksAsync(project.Id)
+                         .Returns(hasOpenTasks);
+        }
     }
 
     private void SeedDummyUsers()

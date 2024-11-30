@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using EmployeeAdministration.Application.Abstractions;
+﻿using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
@@ -17,17 +16,42 @@ public class TestUsersService : BaseTestService
     private readonly UpdateUserRequest _dummyUpdateUserRequest = new("Test name");
     private readonly UpdatePasswordRequest _dummyUpdatePasswordRequest = new(_usersPassword, "new_password");
 
-    public TestUsersService() : base()
-        => _service = new(
-                _mockWorkUnit,
-                Substitute.For<IJwtProvider>(),
-                Substitute.For<IImagesService>());
-
-    public static readonly IEnumerable<object[]> _create_ExistingEmail_Arguments = new List<object[]>
+    public static readonly IEnumerable<object[]>
+        _create_ExistingEmail_Arguments = new List<object[]>
     {
         new object[] { _nonMemberEmployee.Email! },
         new object[] { _deletedEmployee.Email! }
+    },
+        _deleteUserArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
+        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
+        new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
+    },
+        _updateUser_InvalidRequester_Arguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedEmployee.Id },
+        new object[] { _nonMemberEmployee.Id },
+    },
+        _invalidUpdateRequesterArguments = new List<object[]>
+    {
+        new object[] { _nonExistingEntityId },
+        new object[] { _deletedEmployee.Id },
+    },
+        _updateUser_ValidRequest_Arguments = new List<object[]>
+    {
+        new object[] { _admin.Id },
+        new object[] { _nonMemberEmployee.Id },
+    },
+        _verifyCredentials_InvalidRequest_Arguments = new List<object[]>
+    {
+        new object[] { "nonexistinguser@email.com", _usersPassword },
+        new object[] { _memberEmployee.Email, "wrong_password" },
     };
+
+    public TestUsersService() : base()
+        => _service = new(_mockWorkUnit, Substitute.For<IJwtProvider>(), Substitute.For<IImagesService>());
 
     [Theory]
     [MemberData(nameof(_create_ExistingEmail_Arguments))]
@@ -53,13 +77,6 @@ public class TestUsersService : BaseTestService
         Assert.Null(result);
     }
 
-    public static readonly IEnumerable<object[]> _deleteUserArguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
-        new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
-    };
-
     [Theory]
     [MemberData(nameof(_deleteUserArguments))]
     public async Task Delete_InvalidUser_ThrowsError(int userId, Type exceptionExpected)
@@ -75,36 +92,17 @@ public class TestUsersService : BaseTestService
         Assert.Null(result);
     }
 
-    public static readonly IEnumerable<object[]> _updateUser_InvalidRequester_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId },
-        new object[] { _deletedEmployee.Id },
-        new object[] { _nonMemberEmployee.Id },
-    };
-
     [Theory]
     [MemberData(nameof(_updateUser_InvalidRequester_Arguments))]
     public async Task Update_InvalidRequester_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(async () =>
                 await _service.UpdateUserAsync(requesterId, _memberEmployee.Id, _dummyUpdateUserRequest));
 
-    public static readonly IEnumerable<object[]> _updateUser_InvalidUser_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId },
-        new object[] { _deletedEmployee.Id },
-    };
-
     [Theory]
-    [MemberData(nameof(_updateUser_InvalidUser_Arguments))]
+    [MemberData(nameof(_invalidUpdateRequesterArguments))]
     public async Task Update_InvalidUser_ThrowsError(int userId)
         => await Assert.ThrowsAsync<EntityNotFoundException>(async () =>
                 await _service.UpdateUserAsync(_admin.Id, userId, _dummyUpdateUserRequest));
-
-    public static readonly IEnumerable<object[]> _updateUser_ValidRequest_Arguments = new List<object[]>
-    {
-        new object[] { _admin.Id },
-        new object[] { _nonMemberEmployee.Id },
-    };
 
     [Theory]
     [MemberData(nameof(_updateUser_ValidRequest_Arguments))]
@@ -115,12 +113,6 @@ public class TestUsersService : BaseTestService
 
         Assert.Null(result);
     }
-
-    public static readonly IEnumerable<object[]> _verifyCredentials_InvalidRequest_Arguments = new List<object[]>
-    {
-        new object[] { "nonexistinguser@email.com", _usersPassword },
-        new object[] { _memberEmployee.Email, "wrong_password" },
-    };
 
     [Theory]
     [MemberData(nameof(_verifyCredentials_InvalidRequest_Arguments))]
@@ -137,14 +129,8 @@ public class TestUsersService : BaseTestService
         Assert.NotNull(await _service.VerifyCredentialsAsync(new(_memberEmployee.Email, _usersPassword)));
     }
 
-    public static readonly IEnumerable<object[]> _updatePassword_InvalidRequester_Arguments = new List<object[]>
-    {
-        new object[] { _nonExistingEntityId },
-        new object[] { _deletedEmployee.Id },
-    };
-
     [Theory]
-    [MemberData(nameof(_updatePassword_InvalidRequester_Arguments))]
+    [MemberData(nameof(_invalidUpdateRequesterArguments))]
     public async Task UpdatePassword_InvalidRequester_ThrowsError(int requesterId)
         => await Assert.ThrowsAsync<UnauthorizedException>(
                 async () => await _service.UpdatePasswordAsync(requesterId, _dummyUpdatePasswordRequest));
