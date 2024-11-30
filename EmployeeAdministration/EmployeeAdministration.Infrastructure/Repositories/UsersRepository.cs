@@ -54,7 +54,7 @@ internal class UsersRepository : IUsersRepository
         var query = _userManager.Users;
 
         if (!includeDeletedUsers)
-            query = query.Where(e => e.DeletedAt != null);
+            query = query.Where(e => e.DeletedAt == null);
 
         if (filterByRole != null)
             query = query.Where(e => e.Roles.Any(e => e.RoleId == (int)filterByRole));

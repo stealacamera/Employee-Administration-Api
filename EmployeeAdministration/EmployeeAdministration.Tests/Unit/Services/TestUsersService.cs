@@ -26,7 +26,7 @@ public class TestUsersService : BaseTestService
     public static readonly IEnumerable<object[]> _create_ExistingEmail_Arguments = new List<object[]>
     {
         new object[] { _nonMemberEmployee.Email! },
-        new object[] { _deletedUser.Email! }
+        new object[] { _deletedEmployee.Email! }
     };
 
     [Theory]
@@ -56,7 +56,7 @@ public class TestUsersService : BaseTestService
     public static readonly IEnumerable<object[]> _deleteUserArguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
         new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
     };
 
@@ -78,7 +78,7 @@ public class TestUsersService : BaseTestService
     public static readonly IEnumerable<object[]> _updateUser_InvalidRequester_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
         new object[] { _nonMemberEmployee.Id },
     };
 
@@ -91,7 +91,7 @@ public class TestUsersService : BaseTestService
     public static readonly IEnumerable<object[]> _updateUser_InvalidUser_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
     };
 
     [Theory]
@@ -140,7 +140,7 @@ public class TestUsersService : BaseTestService
     public static readonly IEnumerable<object[]> _updatePassword_InvalidRequester_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
     };
 
     [Theory]

@@ -1,6 +1,7 @@
 ﻿using EmployeeAdministration.Domain.Entities;
 using EmployeeAdministration.Domain.Enums;
 using EmployeeAdministration.Infrastructure;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Data.Common;
@@ -10,68 +11,96 @@ namespace EmployeeAdministration.Tests.Unit.Repositories;
 
 public abstract class BaseTestRepository
 {
-    private readonly DbConnection _connection;
+    protected readonly SqliteConnection _connection;
     private readonly DbContextOptions<AppDbContext> _contextOptions;
-    protected readonly AppDbContext _dbContext = null!;
+    private readonly AppDbContext _dbContext = null!;
 
     #region Dummy users
     protected static readonly User
         _deletedEmployee = new()
         {
-            UserName = "deleted_user", Email = "deleteduser@email.com",
-            FirstName = "Name", Surname = "Surname",
+            Id = 1,
+            UserName = "deleted_user",
+            Email = "user_4@email.com", NormalizedEmail = "USER_4@EMAIL.COM",
+            FirstName = "Name",
+            Surname = "Surname",
             DeletedAt = DateTime.UtcNow,
         },
         _employee = new()
         {
-            UserName = "user_1", Email = "user_1@email.com",
-            FirstName = "Name", Surname = "Surname",
+            Id = 2,
+            UserName = "user_1",
+            Email = "user_1@email.com", NormalizedEmail = "USER_1@EMAIL.COM",
+            EmailConfirmed = true,
+            FirstName = "Name",
+            Surname = "Surname",
         },
-        _admin = new() 
+        _admin = new()
         {
-            UserName = "user_2", Email = "user_2@email.com",
-            FirstName = "Name", Surname = "Surname"
+            Id = 3,
+            UserName = "user_2",
+            Email = "user_2@email.com",
+            NormalizedEmail = "USER_2@EMAIL.COM",
+            EmailConfirmed = true,
+            FirstName = "Name",
+            Surname = "Surname"
         },
         _deletedAdmin = new()
         {
-            UserName = "user_3", Email = "user_3@email.com",
-            FirstName = "Name", Surname = "Surname"
+            Id = 4,
+            UserName = "user_3",
+            Email = "user_3@email.com",
+            NormalizedEmail = "USER_3@EMAIL.COM",
+            EmailConfirmed = true,
+            FirstName = "Name",
+            Surname = "Surname",
+            DeletedAt = DateTime.UtcNow,
         };
 
-    public static readonly IEnumerable<object[]> _deletedUsers = 
-        new List<object[]>() { new object[] { _deletedAdmin }, new object[] { _deletedEmployee }};
-    
-    public static readonly IEnumerable<object[]> _existingUsers = 
-        new List<object[]>() { new object[] { _admin }, new object[] { _employee }};
+    private static readonly IdentityUserRole<int>
+        _employeeRole = new() { RoleId = (int)Roles.Employee, UserId = _employee.Id },
+        _deletedEmployeeRole = new() { RoleId = (int)Roles.Employee, UserId = _deletedEmployee.Id },
+        _adminRole = new() { RoleId = (int)Roles.Administrator, UserId = _admin.Id },
+        _deletedAdminRole = new() { RoleId = (int)Roles.Administrator, UserId = _deletedAdmin.Id };
+
+    public static readonly IEnumerable<object[]> _deletedUsers =
+        new List<object[]>() { new object[] { _deletedAdmin }, new object[] { _deletedEmployee } };
+
+    public static readonly IEnumerable<object[]> _existingUsers =
+        new List<object[]>() { new object[] { _admin }, new object[] { _employee } };
     #endregion
 
-    protected static readonly Project 
+    protected static readonly Project
         _openProject = new()
         {
+            Id = 1,
             CreatedAt = DateTime.UtcNow,
             Name = "Name",
             StatusId = ProjectStatuses.InProgress.Id
         },
         _finishedProject = new()
         {
+            Id = 2,
             CreatedAt = DateTime.UtcNow,
             Name = "Name",
             StatusId = ProjectStatuses.Finished.Id
         },
         _pausedProject = new()
         {
+            Id = 3,
             CreatedAt = DateTime.UtcNow,
             Name = "Name",
             StatusId = ProjectStatuses.Paused.Id
         },
         _emptyProject = new()
         {
+            Id = 4,
             CreatedAt = DateTime.UtcNow,
             Name = "Name",
             StatusId = ProjectStatuses.Paused.Id
         };
 
-    protected static readonly ProjectMember 
+    protected static readonly ProjectMember
         _openProjectMember = new()
         {
             CreatedAt = DateTime.UtcNow,
@@ -91,7 +120,7 @@ public abstract class BaseTestRepository
             ProjectId = _pausedProject.Id
         };
 
-    protected static readonly Task 
+    protected static readonly Task
         _openTask = new()
         {
             ProjectId = _openProject.Id,
@@ -106,42 +135,43 @@ public abstract class BaseTestRepository
             AppointeeEmployeeId = _employee.Id,
             AppointerUserId = _admin.Id,
             Name = "Name",
+            IsCompleted = true,
             CreatedAt = DateTime.UtcNow
         };
 
     protected BaseTestRepository()
     {
-        _connection = new SqliteConnection("Filename=:memory:");
+        _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
         _contextOptions = new DbContextOptionsBuilder<AppDbContext>()
                             .UseSqlite(_connection)
+                            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
                             .Options;
 
-        using var dbContext = new AppDbContext(_contextOptions);
-        SeedDummyData(dbContext);
-        dbContext.SaveChanges();
+        using (var dbContext = new AppDbContext(_contextOptions))
+        {
+            dbContext.Database.EnsureDeleted();
+            dbContext.Database.EnsureCreated();
+
+            SeedDummyData(dbContext);
+            dbContext.SaveChanges();
+        }
     }
 
     private void SeedDummyData(AppDbContext dbContext)
     {
-        dbContext.Users.Add(_employee);
-        dbContext.Users.Add(_admin);
-        dbContext.Users.Add(_deletedAdmin);
-        dbContext.Users.Add(_deletedEmployee);
+        dbContext.Users.AddRange(_employee, _admin, _deletedAdmin, _deletedEmployee);
+        dbContext.UserRoles.AddRange(_adminRole, _deletedAdminRole, _deletedEmployeeRole, _employeeRole);
+        dbContext.SaveChanges();
 
-        dbContext.Projects.Add(_openProject);
-        dbContext.Projects.Add(_finishedProject);
-        dbContext.Projects.Add(_pausedProject);
-        dbContext.Projects.Add(_emptyProject);
+        dbContext.Projects.AddRange(_openProject, _finishedProject, _pausedProject, _emptyProject);
+        dbContext.SaveChanges();
 
-        dbContext.ProjectMembers.Add(_openProjectMember);
-        dbContext.ProjectMembers.Add(_finishedProjectMember);
-        dbContext.ProjectMembers.Add(_pausedProjectMember);
+        dbContext.ProjectMembers.AddRange(_openProjectMember, _finishedProjectMember, _pausedProjectMember);
+        dbContext.SaveChanges();
 
-        dbContext.Tasks.Add(_finishedTask);
-        dbContext.Tasks.Add(_openTask);
-
+        dbContext.Tasks.AddRange(_finishedTask, _openTask);
         dbContext.SaveChanges();
     }
 

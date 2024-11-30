@@ -24,7 +24,7 @@ public class TestTasksService : BaseTestService
     public static readonly IEnumerable<object[]> _create_InvalidAppointee_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
         new object[] { _admin.Id, typeof(NonEmployeeUserException) },
         new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
     };
@@ -71,7 +71,7 @@ public class TestTasksService : BaseTestService
     public static readonly IEnumerable<object[]> _getAllForProject_InvalidRequester_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
         new object[] { _nonMemberEmployee.Id },
     };
 

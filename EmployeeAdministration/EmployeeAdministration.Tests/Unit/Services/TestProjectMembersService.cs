@@ -20,7 +20,7 @@ public class TestProjectMembersService : BaseTestService
     public static readonly IEnumerable<object[]> _addEmployeeToProjectArguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
         new object[] { _admin.Id, typeof(NonEmployeeUserException) },
         new object[] { _memberEmployee.Id, typeof(ExistingProjectMemberException) },
     };
@@ -49,7 +49,7 @@ public class TestProjectMembersService : BaseTestService
     public static readonly IEnumerable<object[]> _removeEmployeeFromProjectArguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId, typeof(EntityNotFoundException) },
-        new object[] { _deletedUser.Id, typeof(EntityNotFoundException) },
+        new object[] { _deletedEmployee.Id, typeof(EntityNotFoundException) },
         new object[] { _nonMemberEmployee.Id, typeof(NotAProjectMemberException) },
         new object[] { _memberEmployee.Id, typeof(UncompletedTasksAssignedToEntityException) },
     };

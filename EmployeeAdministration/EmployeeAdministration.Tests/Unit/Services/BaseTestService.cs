@@ -14,22 +14,24 @@ public abstract class BaseTestService
     protected static int _nonExistingEntityId = 0;
     protected static string _usersPassword = "correct_password";
 
-    protected static User _deletedUser = new User { Id = 4, Email = "deleted@email.com", DeletedAt = DateTime.UtcNow },
-                          _nonMemberEmployee = new User { Id = 1, Email = "user1@email.com" },
-                          _memberEmployee = new User { Id = 2, Email = "user2@email.com" },
-                          _admin = new User { Id = 3, Email = "admin@email.com" };
+    protected static User
+        _deletedEmployee = new User { Id = 4, Email = "deleted@email.com", DeletedAt = DateTime.UtcNow },
+        _nonMemberEmployee = new User { Id = 1, Email = "user1@email.com" },
+        _memberEmployee = new User { Id = 2, Email = "user2@email.com" },
+        _deletedAdmin = new() { Id = 5, Email = "deletedadmin@email.com", DeletedAt = DateTime.UtcNow },
+        _admin = new User { Id = 3, Email = "admin@email.com" };
 
     protected static Project _projectWithOpenTasks = new Project { Id = 1, StatusId = ProjectStatuses.InProgress.Id },
                              _projectWithCompletedTasks = new Project { Id = 2, StatusId = ProjectStatuses.InProgress.Id };
 
-    protected static ProjectMember 
+    protected static ProjectMember
         _openTasksMembership = new()
         {
             ProjectId = _projectWithOpenTasks.Id,
             EmployeeId = _memberEmployee.Id
         },
-        _completedTasksMembership = new() 
-        { 
+        _completedTasksMembership = new()
+        {
             ProjectId = _projectWithCompletedTasks.Id,
             EmployeeId = _memberEmployee.Id
         };
@@ -46,7 +48,7 @@ public abstract class BaseTestService
     public static readonly IEnumerable<object[]> _invalidUsersArguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
         new object[] { _nonMemberEmployee.Id },
     };
 
@@ -89,8 +91,12 @@ public abstract class BaseTestService
         _mockWorkUnit.UsersRepository.GetUserRoleAsync(_admin).Returns(Roles.Administrator);
         _mockWorkUnit.UsersRepository.GetUserRoleAsync(_nonMemberEmployee).Returns(Roles.Employee);
         _mockWorkUnit.UsersRepository.GetUserRoleAsync(_memberEmployee).Returns(Roles.Employee);
+        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_deletedEmployee).Returns(Roles.Employee);
+        _mockWorkUnit.UsersRepository.GetUserRoleAsync(_deletedAdmin).Returns(Roles.Administrator);
 
         _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_admin, Roles.Administrator).Returns(true);
+        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_deletedAdmin, Roles.Administrator).Returns(true);
+        _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_deletedEmployee, Roles.Employee).Returns(true);
         _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_nonMemberEmployee, Roles.Employee).Returns(true);
         _mockWorkUnit.UsersRepository.IsUserInRoleAsync(_memberEmployee, Roles.Employee).Returns(true);
     }
@@ -138,29 +144,23 @@ public abstract class BaseTestService
         _mockWorkUnit.UsersRepository.GetByIdAsync(_nonExistingEntityId).Returns(null as User);
         _mockWorkUnit.UsersRepository.DoesUserExistAsync(_nonExistingEntityId).Returns(false);
 
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_deletedUser.Id).Returns(null as User);
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_deletedUser.Id, excludeDeletedUser: false).Returns(_deletedUser);
-        _mockWorkUnit.UsersRepository.DoesUserExistAsync(_deletedUser.Id).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_deletedUser.Email, includeDeletedUsers: false).Returns(false);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_deletedUser.Email, includeDeletedUsers: true).Returns(true);
-        _mockWorkUnit.UsersRepository.GetByEmailAsync(_deletedUser.Email).Returns(null as User);
+        foreach (var deletedUser in new[] { _deletedAdmin, _deletedEmployee })
+        {
+            _mockWorkUnit.UsersRepository.GetByIdAsync(deletedUser.Id).Returns(null as User);
+            _mockWorkUnit.UsersRepository.GetByIdAsync(deletedUser.Id, excludeDeletedUser: false).Returns(deletedUser);
+            _mockWorkUnit.UsersRepository.DoesUserExistAsync(deletedUser.Id).Returns(true);
+            _mockWorkUnit.UsersRepository.IsEmailInUseAsync(deletedUser.Email, includeDeletedUsers: false).Returns(false);
+            _mockWorkUnit.UsersRepository.IsEmailInUseAsync(deletedUser.Email, includeDeletedUsers: true).Returns(true);
+            _mockWorkUnit.UsersRepository.GetByEmailAsync(deletedUser.Email).Returns(null as User);
+        }
 
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_nonMemberEmployee.Id).Returns(_nonMemberEmployee);
-        _mockWorkUnit.UsersRepository.DoesUserExistAsync(_nonMemberEmployee.Id).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_nonMemberEmployee.Email, includeDeletedUsers: false).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_nonMemberEmployee.Email, includeDeletedUsers: true).Returns(true);
-        _mockWorkUnit.UsersRepository.GetByEmailAsync(_nonMemberEmployee.Email).Returns(_nonMemberEmployee);
-
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_memberEmployee.Id).Returns(_memberEmployee);
-        _mockWorkUnit.UsersRepository.DoesUserExistAsync(_memberEmployee.Id).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_memberEmployee.Email, includeDeletedUsers: false).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_memberEmployee.Email, includeDeletedUsers: true).Returns(true);
-        _mockWorkUnit.UsersRepository.GetByEmailAsync(_memberEmployee.Email).Returns(_memberEmployee);
-
-        _mockWorkUnit.UsersRepository.GetByIdAsync(_admin.Id).Returns(_admin);
-        _mockWorkUnit.UsersRepository.DoesUserExistAsync(_admin.Id).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_admin.Email, includeDeletedUsers: false).Returns(true);
-        _mockWorkUnit.UsersRepository.IsEmailInUseAsync(_admin.Email, includeDeletedUsers: true).Returns(true);
-        _mockWorkUnit.UsersRepository.GetByEmailAsync(_admin.Email).Returns(_admin);
+        foreach (var user in new[] { _memberEmployee, _nonMemberEmployee, _admin })
+        {
+            _mockWorkUnit.UsersRepository.GetByIdAsync(user.Id).Returns(user);
+            _mockWorkUnit.UsersRepository.DoesUserExistAsync(user.Id).Returns(true);
+            _mockWorkUnit.UsersRepository.IsEmailInUseAsync(user.Email, includeDeletedUsers: false).Returns(true);
+            _mockWorkUnit.UsersRepository.IsEmailInUseAsync(user.Email, includeDeletedUsers: true).Returns(true);
+            _mockWorkUnit.UsersRepository.GetByEmailAsync(user.Email).Returns(user);
+        }
     }
 }

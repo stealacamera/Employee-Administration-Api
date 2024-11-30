@@ -17,7 +17,7 @@ public class TestProjectsService : BaseTestService
     public static readonly IEnumerable<object[]> _createProject_InvalidMember_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
         new object[] { _admin.Id },
     };
 
@@ -62,7 +62,7 @@ public class TestProjectsService : BaseTestService
     public static readonly IEnumerable<object[]> _getById_InvalidRequester_Arguments = new List<object[]>
     {
         new object[] { _nonExistingEntityId },
-        new object[] { _deletedUser.Id },
+        new object[] { _deletedEmployee.Id },
         new object[] { _nonMemberEmployee.Id },
     };
 
