@@ -26,7 +26,7 @@ internal class UsersService : BaseService, IUsersService
     {
         // Check if the email is currently in use
         if(await _workUnit.UsersRepository
-                          .IsEmailInUseAsync(request.Password, cancellationToken: cancellationToken))
+                          .IsEmailInUseAsync(request.Email, includeDeletedUsers: true, cancellationToken))
             throw new ValidationException("Email", "Email is in use by an existing account");
 
         string? profilePictureId = null;
@@ -74,9 +74,9 @@ internal class UsersService : BaseService, IUsersService
     public async System.Threading.Tasks.Task DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await _workUnit.UsersRepository
-                                  .GetByIdAsync(userId, cancellationToken);
+                                  .GetByIdAsync(userId, cancellationToken: cancellationToken);
 
-        if (user == null || user.DeletedAt != null)
+        if (user == null)
             throw new EntityNotFoundException(nameof(User));
 
         // If user is an employee, check if there are open tasks assigned to user
@@ -144,9 +144,9 @@ internal class UsersService : BaseService, IUsersService
     public async Task<UserProfile> GetProfileByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         var user = await _workUnit.UsersRepository
-                                  .GetByIdAsync(id, cancellationToken);
+                                  .GetByIdAsync(id, cancellationToken: cancellationToken);
 
-        if (user == null || user.DeletedAt != null)
+        if (user == null)
             throw new EntityNotFoundException(nameof(User));
 
         var userRole = await _workUnit.UsersRepository
@@ -182,19 +182,19 @@ internal class UsersService : BaseService, IUsersService
         UpdateUserRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken);
-        var user = await _workUnit.UsersRepository.GetByIdAsync(userId, cancellationToken);
+        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken: cancellationToken);
+        var user = await _workUnit.UsersRepository.GetByIdAsync(userId, cancellationToken: cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
-        else if (user == null || user.DeletedAt != null)
+        else if (user == null)
             throw new EntityNotFoundException(nameof(User));
 
         // Check if the user is an employee, they're updating themselves
-        bool isUserEmployee = await _workUnit.UsersRepository
+        bool isRequesterEmployee = await _workUnit.UsersRepository
                                              .IsUserInRoleAsync(requester, Roles.Employee, cancellationToken);
         
-        if (isUserEmployee && requester.Id != userId)
+        if (isRequesterEmployee && requester.Id != user.Id)
             throw new UnauthorizedException();
 
         // Update user profile
@@ -228,13 +228,15 @@ internal class UsersService : BaseService, IUsersService
         CancellationToken cancellationToken = default)
     {
         var user = await _workUnit.UsersRepository
-                                  .GetByEmailAsync(request.Email, cancellationToken);
+                                  .GetByEmailAsync(request.Email, cancellationToken: cancellationToken);
 
-        if (user == null || user.DeletedAt != null)
-            throw new EntityNotFoundException(nameof(User));
+        if (user == null)
+            return null;
 
-        if (!await _workUnit.UsersRepository
-                            .VerifyCredentialsAsync(user, request.Password, cancellationToken))
+        var areCorrectCredentials = await _workUnit.UsersRepository
+                                                   .VerifyCredentialsAsync(user, request.Password, cancellationToken);
+            
+        if(!areCorrectCredentials)
             return null;
 
         var userRole = await _workUnit.UsersRepository
@@ -247,6 +249,26 @@ internal class UsersService : BaseService, IUsersService
         return new LoggedInUser(
             new User(user.Id, user.Email, user.FirstName, user.Surname, userRole, profilePictureUrl),
             new Tokens(_jwtProvider.GenerateToken(user.Id, user.Email), _jwtProvider.GenerateRefreshToken()));
+    }
+
+    public async System.Threading.Tasks.Task UpdatePasswordAsync(int requesterId, UpdatePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken: cancellationToken);
+
+        if (requester == null)
+            throw new UnauthorizedException();
+        else if (!await _workUnit.UsersRepository
+                                 .IsPasswordCorrectAsync(requester, request.CurrentPassword, cancellationToken))
+            throw new InvalidPasswordException();
+
+        await _workUnit.UsersRepository
+                       .UpdatePassword(
+                            requester,
+                            request.CurrentPassword,
+                            request.NewPassword,
+                            cancellationToken);
+
+        await _workUnit.SaveChangesAsync();
     }
 
 
@@ -278,7 +300,7 @@ internal class UsersService : BaseService, IUsersService
         if (model.AppointeeEmployeeId != model.AppointerUserId)
         {
             var appointerEntity = await _workUnit.UsersRepository
-                                                 .GetByIdAsync(model.AppointerUserId, cancellationToken);
+                                                 .GetByIdAsync(model.AppointerUserId, cancellationToken: cancellationToken);
 
             if (appointerEntity == null)
                 throw new EntityNotFoundException(nameof(User));
@@ -295,25 +317,5 @@ internal class UsersService : BaseService, IUsersService
             model.Id, appointer, appointee,
             model.Name, model.IsCompleted,
             model.CreatedAt, model.Description);
-    }
-
-    public async System.Threading.Tasks.Task UpdatePasswordAsync(int requesterId, UpdatePasswordRequest request, CancellationToken cancellationToken = default)
-    {
-        var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken);
-
-        if (requester == null)
-            throw new UnauthorizedException();
-        else if (!await _workUnit.UsersRepository
-                                 .IsPasswordCorrectAsync(requester, request.CurrentPassword, cancellationToken))
-            throw new InvalidPasswordException();
-
-        await _workUnit.UsersRepository
-                       .UpdatePassword(
-                            requester, 
-                            request.CurrentPassword, 
-                            request.NewPassword, 
-                            cancellationToken);
-        
-        await _workUnit.SaveChangesAsync();
     }
 }

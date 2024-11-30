@@ -15,11 +15,11 @@ internal class TasksService : BaseService, ITasksService
     {
         bool isTaskSelfAssigned = requesterId == request.AppointeeId;
         var requester = await ValidateRequesterIsAdminOrInProjectAsync(requesterId, projectId, cancellationToken);        
-        var appointee = await ValidateAppointeeToCreateTaskAsync(request.AppointeeId, projectId, isTaskSelfAssigned, cancellationToken);
-
-        // Check project exists
+        
         if (!await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
             throw new EntityNotFoundException(nameof(Project));
+
+        var appointee = await ValidateAppointeeToCreateTaskAsync(request.AppointeeId, projectId, isTaskSelfAssigned, cancellationToken);
 
         // Add new task
         var newTask = new Domain.Entities.Task
@@ -59,7 +59,7 @@ internal class TasksService : BaseService, ITasksService
     {
         var requester = await ValidateRequesterIsAdminOrInProjectAsync(requesterId, projectId, cancellationToken);
 
-        if (await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
+        if (!await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
             throw new EntityNotFoundException(nameof(Project));
 
         return (await _workUnit.TasksRepository
@@ -113,9 +113,9 @@ internal class TasksService : BaseService, ITasksService
         CancellationToken cancellationToken)
     {
         var requester = await _workUnit.UsersRepository
-                                       .GetByIdAsync(requesterId, cancellationToken);
+                                       .GetByIdAsync(requesterId, cancellationToken: cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
 
         // Check requester is an admin 
@@ -138,9 +138,9 @@ internal class TasksService : BaseService, ITasksService
         // Check if requester is an admin
         // or if the task is appointed to them
         var requester = await _workUnit.UsersRepository
-                                       .GetByIdAsync(requesterId, cancellationToken);
+                                       .GetByIdAsync(requesterId, cancellationToken: cancellationToken);
 
-        if (requester == null || requester.DeletedAt != null)
+        if (requester == null)
             throw new UnauthorizedException();
 
         bool isRequesterAdmin = await _workUnit.UsersRepository
@@ -156,10 +156,10 @@ internal class TasksService : BaseService, ITasksService
         bool isTaskSelfAssigned,
         CancellationToken cancellationToken)
     {
-        var appointee = await _workUnit.UsersRepository.GetByIdAsync(appointeeId, cancellationToken);
+        var appointee = await _workUnit.UsersRepository.GetByIdAsync(appointeeId, cancellationToken: cancellationToken);
 
         // Check appointee exists and is an employee in the project
-        if (appointee == null || appointee.DeletedAt != null)
+        if (appointee == null)
             throw new EntityNotFoundException(nameof(User));
         else if (!await _workUnit.UsersRepository.IsUserInRoleAsync(appointee, Roles.Employee, cancellationToken))
             throw new NonEmployeeUserException();
@@ -178,7 +178,7 @@ internal class TasksService : BaseService, ITasksService
         if (isTaskSelfAssigned)
         {
             var appointerDb = (await _workUnit.UsersRepository
-                                              .GetByIdAsync(entity.AppointerUserId, cancellationToken))!;
+                                              .GetByIdAsync(entity.AppointerUserId, cancellationToken: cancellationToken))!;
 
             appointer = new(
                 appointerDb.Id, appointerDb.Email,
@@ -187,7 +187,7 @@ internal class TasksService : BaseService, ITasksService
         }
 
         var appointeeDb = (await _workUnit.UsersRepository
-                                       .GetByIdAsync(entity.AppointeeEmployeeId, cancellationToken))!;
+                                       .GetByIdAsync(entity.AppointeeEmployeeId, cancellationToken: cancellationToken))!;
 
         var appointee = new BriefUser(
             appointeeDb.Id, appointeeDb.Email,

@@ -29,4 +29,5 @@ public record CreateProjectRequest(
 
 public record UpdateProjectRequest(
     [StringLength(ValidationUtils.ProjectNameLength)] string? Name = null,
-    [StringLength(ValidationUtils.ProjectDescriptionLength)] string? Description = null);
+    [StringLength(ValidationUtils.ProjectDescriptionLength)] string? Description = null,
+    ProjectStatuses? Status = null);

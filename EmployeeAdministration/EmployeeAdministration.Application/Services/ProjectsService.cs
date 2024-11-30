@@ -66,12 +66,19 @@ internal class ProjectsService : BaseService, IProjectsService
         });
     }
 
-    public async Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken)
+    public async Task<ComprehensiveProject> GetByIdAsync(int id, int requesterId, CancellationToken cancellationToken = default)
     {
+        // Retrieve project
+        var project = await _workUnit.ProjectsRepository
+                                     .GetByIdAsync(id, cancellationToken);
+
+        if(project == null)
+            throw new EntityNotFoundException(nameof(BriefProject));
+        
         // Check if requester is an employee
         // If so, they need to be a member of the project
         var requester = await _workUnit.UsersRepository
-                                       .GetByIdAsync(requesterId, cancellationToken);
+                                       .GetByIdAsync(requesterId, cancellationToken: cancellationToken);
 
         if (requester == null)
             throw new UnauthorizedException();
@@ -83,12 +90,6 @@ internal class ProjectsService : BaseService, IProjectsService
                 throw new UnauthorizedException();
         }
 
-        // Retrieve project
-        var project = await _workUnit.ProjectsRepository.GetByIdAsync(id, cancellationToken);
-
-        if(project == null)
-            throw new EntityNotFoundException(nameof(BriefProject));
-
         return new ComprehensiveProject(
             project.Id, project.Name, ProjectStatuses.FromId(project.StatusId),
             await GetProjectTasksAsync(id, cancellationToken), 
@@ -98,7 +99,7 @@ internal class ProjectsService : BaseService, IProjectsService
 
     public async Task<BriefProject> UpdateAsync(int id, UpdateProjectRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.Name == null && request.Description == null)
+        if (request.Name == null && request.Description == null && request.Status == null)
             throw new ValidationException("Other", "At least one attribute needs to be updated");
 
         var project = await _workUnit.ProjectsRepository
@@ -112,6 +113,8 @@ internal class ProjectsService : BaseService, IProjectsService
             project.Name = request.Name;
         if (request.Description != null)
             project.Description = request.Description;
+        if (request.Status != null)
+            project.StatusId = request.Status.Id;
 
         project.UpdatedAt = DateTime.UtcNow;
         await _workUnit.SaveChangesAsync();
@@ -131,18 +134,15 @@ internal class ProjectsService : BaseService, IProjectsService
                 // Check if user exists and is an employee before adding membership
                 // If not, skip
                 var user = await _workUnit.UsersRepository
-                                          .GetByIdAsync(userId, cancellationToken);
+                                          .GetByIdAsync(userId, cancellationToken: cancellationToken);
 
-                if (user == null || user.DeletedAt != null)
+                if (user == null)
                     continue;
-
-                bool isUserMember = await _workUnit.ProjectMembersRepository
-                                                   .IsUserMemberAsync(userId, projectId, cancellationToken);
 
                 var userRole = await _workUnit.UsersRepository
                                               .GetUserRoleAsync(user, cancellationToken);
 
-                if (userRole != Roles.Employee || isUserMember)
+                if (userRole != Roles.Employee)
                     continue;
 
                 await _workUnit.ProjectMembersRepository
@@ -175,7 +175,7 @@ internal class ProjectsService : BaseService, IProjectsService
         foreach(var task in taskModels)
         {
             var appointee = (await _workUnit.UsersRepository
-                                            .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken))!;
+                                            .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken: cancellationToken))!;
 
             var appointeeModel = new BriefUser(
                 appointee.Id, appointee.Email,
@@ -188,7 +188,7 @@ internal class ProjectsService : BaseService, IProjectsService
             if (task.AppointeeEmployeeId != task.AppointerUserId)
             {
                 var appointer = (await _workUnit.UsersRepository
-                                                .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken))!;
+                                                .GetByIdAsync(task.AppointeeEmployeeId, cancellationToken: cancellationToken))!;
 
                 appointerModel = new BriefUser(
                     appointee.Id, appointee.Email,
@@ -214,7 +214,7 @@ internal class ProjectsService : BaseService, IProjectsService
         foreach (var membership in memberships)
         {
             var member = (await _workUnit.UsersRepository
-                                         .GetByIdAsync(membership.EmployeeId, cancellationToken))!;
+                                         .GetByIdAsync(membership.EmployeeId, cancellationToken: cancellationToken))!;
 
             members.Add(new BriefUser(
                 member.Id, member.Email, 
