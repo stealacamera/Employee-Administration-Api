@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using EmployeeAdministration.Application.Common.Validation;
 using EmployeeAdministration.Domain.Enums;
 

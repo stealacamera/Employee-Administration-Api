@@ -1,9 +1,13 @@
-﻿using EmployeeAdministration.Application.Abstractions;
+﻿using System.Text.Json.Serialization;
+using Ardalis.SmartEnum;
+using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Application.Common;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Domain.Enums;
 using EmployeeAdministration.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -19,6 +23,13 @@ internal static class StartupUtils
 
         services.AddTransient<ExceptionHandlingMiddleware>();
         services.AddSingleton<IAuthorizationHandler, CustomRoleAuthorizationHandler>();
+    }
+
+    public static void RegisterJsonConverters(JsonOptions options)
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        //options.JsonSerializerOptions.Converters.Add(new SmartEnumNameConverter)
+        options.JsonSerializerOptions.Converters.Add(new ProjectStatusesJsonConverter());
     }
 
     public static async Task SeedAdmin(this IServiceProvider serviceProvider)

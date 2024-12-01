@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using EmployeeAdministration.API.Common;
 using EmployeeAdministration.Infrastructure;
 
@@ -6,7 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.RegisterInfrastructure();
 builder.Services.RegisterUtils();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+                .AddJsonOptions(StartupUtils.RegisterJsonConverters);
+
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();

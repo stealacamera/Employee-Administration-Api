@@ -15,6 +15,6 @@ public static class ValidationUtils
     public const int TaskNameLength = 150,
                      TaskDescriptionLength = 350;
 
-    public const string PasswordRegex = "/^(?=.*\\d)(?=.*[a-zA-Z]).{8,}$/",
+    public const string PasswordRegex = @"^(?=.*\d)(?=.*[a-zA-Z]).{8,}$",
                         PasswordRegexErrorMessage = "Passwords require a minimum of 8 characters (letters and numbers)";
 }

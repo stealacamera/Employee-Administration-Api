@@ -141,13 +141,13 @@ internal class UsersService : BaseService, IUsersService
         => await _workUnit.UsersRepository
                           .IsEmailInUseAsync(email, includeDeletedEntities, cancellationToken);
 
-    public async Task<UserProfile> GetProfileByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<UserProfile> GetProfileByIdAsync(int requesterId, CancellationToken cancellationToken = default)
     {
         var user = await _workUnit.UsersRepository
-                                  .GetByIdAsync(id, cancellationToken: cancellationToken);
+                                  .GetByIdAsync(requesterId, cancellationToken: cancellationToken);
 
         if (user == null)
-            throw new EntityNotFoundException(nameof(User));
+            throw new UnauthorizedException();
 
         var userRole = await _workUnit.UsersRepository
                                       .GetUserRoleAsync(user, cancellationToken);
