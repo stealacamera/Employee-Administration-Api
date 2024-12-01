@@ -5,7 +5,7 @@ using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Domain.Enums;
 using Task = EmployeeAdministration.Application.Common.DTOs.Task;
 
-namespace EmployeeAdministration.Application.Services;
+namespace EmployeeAdministration.Infrastructure.Services;
 
 internal class TasksService : BaseService, ITasksService
 {

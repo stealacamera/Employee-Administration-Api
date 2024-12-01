@@ -3,7 +3,7 @@ using EmployeeAdministration.Application.Abstractions.Services;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 
-namespace EmployeeAdministration.Application.Services;
+namespace EmployeeAdministration.Infrastructure.Services;
 
 internal class ProjectMembersService : BaseService, IProjectMembersService
 {

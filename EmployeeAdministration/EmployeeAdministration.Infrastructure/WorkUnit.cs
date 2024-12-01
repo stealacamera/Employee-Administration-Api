@@ -13,10 +13,10 @@ internal class WorkUnit : IWorkUnit
     private readonly IServiceProvider _serviceProvider;
     private readonly AppDbContext _dbContext;
 
-    public WorkUnit(IServiceProvider serviceProvider)
+    public WorkUnit(AppDbContext dbContext, IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        _dbContext = _serviceProvider.GetRequiredService<AppDbContext>();
+        _dbContext = dbContext;
     }
 
     public async Task SaveChangesAsync()

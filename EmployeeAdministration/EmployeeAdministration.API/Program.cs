@@ -1,11 +1,9 @@
 using EmployeeAdministration.API.Common;
-using EmployeeAdministration.Application;
 using EmployeeAdministration.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.RegisterInfrastructure();
-builder.Services.RegisterApplication();
 builder.Services.RegisterUtils();
 
 builder.Services.AddControllers();
@@ -28,5 +26,8 @@ app.UseAuthorization();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.MapControllers();
+
+app.Services.ApplyMigrations();
+await app.Services.SeedAdmin();
 
 app.Run();

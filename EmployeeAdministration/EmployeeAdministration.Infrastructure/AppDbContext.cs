@@ -9,10 +9,10 @@ namespace EmployeeAdministration.Infrastructure;
 public class AppDbContext : IdentityDbContext<User, Role, int>
 {
     #region Tables
-    public DbSet<Project> Projects { get; set; }
-    public DbSet<ProjectStatus> ProjectStatuses { get; set; }
-    public DbSet<ProjectMember> ProjectMembers { get; set; }
-    public DbSet<Task> Tasks { get; set; }
+    public DbSet<Project> Projects { get; set; } = null!;
+    public DbSet<ProjectStatus> ProjectStatuses { get; set; } = null!;
+    public DbSet<ProjectMember> ProjectMembers { get; set; } = null!;
+    public DbSet<Task> Tasks { get; set; } = null!;
     #endregion
 
     public AppDbContext(DbContextOptions options) : base(options) { }

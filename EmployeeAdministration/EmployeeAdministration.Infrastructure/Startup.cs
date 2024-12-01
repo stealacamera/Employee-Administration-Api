@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using System.Configuration;
+using User = EmployeeAdministration.Domain.Entities.User;
 
 namespace EmployeeAdministration.Infrastructure;
 
@@ -16,7 +16,8 @@ public static class Startup
 {
     public static void RegisterInfrastructure(this WebApplicationBuilder builder)
     {
-        builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Database")));
+        builder.Services.AddDbContext<AppDbContext>(
+            options => options.UseSqlServer(builder.Configuration.GetConnectionString("Database")));
 
         builder.Services.AddIdentityCore<User>(options =>
                 {
@@ -51,6 +52,7 @@ public static class Startup
         builder.Services.AddScoped<IImagesService, ImagesService>();
         builder.Services.AddScoped<IWorkUnit, WorkUnit>();
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IServicesManager, ServicesManager>();
 
         // Register logger
         Log.Logger = new LoggerConfiguration().ReadFrom

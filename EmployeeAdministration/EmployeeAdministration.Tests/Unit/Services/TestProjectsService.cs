@@ -1,6 +1,6 @@
 ﻿using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
-using EmployeeAdministration.Application.Services;
+using EmployeeAdministration.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 using ValidationException = EmployeeAdministration.Application.Common.Exceptions.ValidationException;
 

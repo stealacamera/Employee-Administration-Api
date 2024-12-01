@@ -2,7 +2,7 @@
 using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
-using EmployeeAdministration.Application.Services;
+using EmployeeAdministration.Infrastructure.Services;
 using EmployeeAdministration.Domain.Enums;
 using NSubstitute;
 using Task = System.Threading.Tasks.Task;

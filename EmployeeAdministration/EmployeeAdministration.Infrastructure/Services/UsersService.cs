@@ -5,7 +5,7 @@ using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Domain.Enums;
 
-namespace EmployeeAdministration.Application.Services;
+namespace EmployeeAdministration.Infrastructure.Services;
 
 internal class UsersService : BaseService, IUsersService
 {
@@ -289,7 +289,7 @@ internal class UsersService : BaseService, IUsersService
 
     }
 
-    private async Task<Common.DTOs.Task> ConvertTaskToModelAsync(
+    private async Task<Application.Common.DTOs.Task> ConvertTaskToModelAsync(
         Domain.Entities.Task model, 
         BriefUser appointee, 
         CancellationToken cancellationToken)
@@ -313,7 +313,7 @@ internal class UsersService : BaseService, IUsersService
                 appointerEntity.FirstName, appointerEntity.Surname);
         }
 
-        return new Common.DTOs.Task(
+        return new Application.Common.DTOs.Task(
             model.Id, appointer, appointee,
             model.Name, model.IsCompleted,
             model.CreatedAt, model.Description);

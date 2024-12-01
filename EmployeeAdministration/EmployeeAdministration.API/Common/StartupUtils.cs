@@ -1,7 +1,13 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Application.Common.DTOs;
+using EmployeeAdministration.Domain.Enums;
+using EmployeeAdministration.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.API.Common;
 
@@ -15,8 +21,47 @@ internal static class StartupUtils
         services.AddSingleton<IAuthorizationHandler, CustomRoleAuthorizationHandler>();
     }
 
+    public static async Task SeedAdmin(this IServiceProvider serviceProvider)
+    {
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var servicesManager = scope.ServiceProvider.GetRequiredService<IServicesManager>();
+            var adminEmail = "admin@email.com";
+
+            if (!await servicesManager.UsersService.DoesUserEmailExistAsync(adminEmail, includeDeletedEntities: true))
+            {
+                // TODO move details to appsettings?
+                var adminRequest = new CreateUserRequest(
+                    Roles.Administrator, adminEmail,
+                    "Admin", "Admin", "base//admin12password");
+
+                await servicesManager.UsersService.CreateUserAsync(adminRequest);
+            }
+        }
+    }
+
+    public static void ApplyMigrations(this IServiceProvider serviceProvider)
+    {
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var context = services.GetRequiredService<AppDbContext>();
+            
+            if (context.Database.GetPendingMigrations().Any())
+                context.Database.Migrate();
+        }
+    }
+
     private static void RegisterSwagger(SwaggerGenOptions options)
     {
+        options.EnableAnnotations();
+
+        //options.DocInclusionPredicate((docName, apiDescription) =>
+        //{
+        //    var groupName = apiDescription.ActionDescriptor.RouteValues["controller"];
+        //    return groupName.ToLower() == docName.ToLower();
+        //});
+
         // Add JWT authentication
         options.AddSecurityDefinition(
             JwtBearerDefaults.AuthenticationScheme,

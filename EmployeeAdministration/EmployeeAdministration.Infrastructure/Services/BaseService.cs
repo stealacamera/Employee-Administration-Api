@@ -1,6 +1,6 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
 
-namespace EmployeeAdministration.Application.Services;
+namespace EmployeeAdministration.Infrastructure.Services;
 
 internal abstract class BaseService
 {

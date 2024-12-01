@@ -2,10 +2,10 @@
 using EmployeeAdministration.Application.Abstractions.Interfaces;
 using EmployeeAdministration.Application.Abstractions.Services;
 using EmployeeAdministration.Application.Abstractions.Services.Utils;
-using EmployeeAdministration.Application.Services;
+using EmployeeAdministration.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EmployeeAdministration.Application;
+namespace EmployeeAdministration.Infrastructure;
 
 internal class ServicesManager : IServicesManager
 {

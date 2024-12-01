@@ -10,14 +10,25 @@ services:
     ports:
         - "5000:5000"
         - "5001:5001"
+    depends_on:
+        - employeeadministration.database
   
   employeeadministration.database:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: employeeadministration.database
     environment:
         - ACCEPT_EULA=Y
-        - MSSQL_SA_PASSWORD=database_password_123
+        - MSSQL_SA_PASSWORD=Data@entry12base
     volumes:
-        - ./.containers/employeeadministration-db:/var/opt/mssql
+        - ./.containers/employeeadministration-db/data:/var/opt/mssql/data
     ports:
-        - "5432:5432"
+        - "1433:1433"
+    depends_on:
+        - employeeadministration.cache
+
+  employeeadministration.cache:
+    image: redis:latest
+    container_name: employeeadministration.cache
+    restart: always
+    ports:
+        - "6379:6379"
