@@ -1,4 +1,5 @@
 ﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Domain.Entities;
 using EmployeeAdministration.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -7,7 +8,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace EmployeeAdministration.Infrastructure;
+namespace EmployeeAdministration.Infrastructure.Common;
 
 internal sealed class JwtProvider : IJwtProvider
 {
@@ -25,6 +26,15 @@ internal sealed class JwtProvider : IJwtProvider
             rng.GetBytes(randNr);
             return Convert.ToBase64String(randNr);
         }
+    }
+
+    public int ExtractIdFromToken(string token)
+    {
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+        return int.Parse(jwtToken.Claims
+                                 .Single(e => e.Type == JwtRegisteredClaimNames.Sub)
+                                 .Value);
     }
 
     public string GenerateToken(int userId, string userEmail)
@@ -51,5 +61,11 @@ internal sealed class JwtProvider : IJwtProvider
 
         string tokenValue = new JwtSecurityTokenHandler().WriteToken(token);
         return tokenValue;
+    }
+
+    public void UpdateRefreshToken(User user)
+    {
+        user.RefreshToken = GenerateRefreshToken();
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddMinutes(_options.RefreshTokenExpiration_Minutes);
     }
 }

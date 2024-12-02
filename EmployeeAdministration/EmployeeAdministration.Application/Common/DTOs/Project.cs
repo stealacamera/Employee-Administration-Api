@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 using EmployeeAdministration.Application.Common.Validation;
 using EmployeeAdministration.Domain.Enums;
 
@@ -13,7 +12,9 @@ public record BriefProject(
 public record Project(
     [Required] int Id,
     [Required, StringLength(ValidationUtils.ProjectNameLength)] string Name,
-    [Required] IList<Task> Tasks);
+    [Required] ProjectStatuses Status,
+    [Required] IList<Task> Tasks,
+    [StringLength(ValidationUtils.ProjectDescriptionLength)] string? Description = null);
 
 public record ComprehensiveProject(
     [Required] int Id,
@@ -26,7 +27,7 @@ public record ComprehensiveProject(
 public record CreateProjectRequest(
     [Required, StringLength(ValidationUtils.ProjectNameLength)] string Name,
     [StringLength(ValidationUtils.ProjectDescriptionLength)] string? Description = null,
-    [MaxLength(100)] int[]? EmployeeIds = null);
+    [MaxLength(ValidationUtils.MaxEmployeesPerTransaction)] int[]? EmployeeIds = null);
 
 public record UpdateProjectRequest(
     [StringLength(ValidationUtils.ProjectNameLength)] string? Name = null,

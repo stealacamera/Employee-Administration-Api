@@ -26,7 +26,7 @@ internal class ServicesManager : IServicesManager
             _usersService ??= new UsersService(
                                 _workUnit, 
                                 _serviceProvider.GetRequiredService<IJwtProvider>(), 
-                                _serviceProvider.GetRequiredService<IImagesService>());
+                                _serviceProvider.GetRequiredService<IImagesStorageService>());
 
             return _usersService;
         }
@@ -59,6 +59,16 @@ internal class ServicesManager : IServicesManager
         {
             _tasksService ??= new TasksService(_workUnit);
             return _tasksService;
+        }
+    }
+
+    private IAuthService _authService = null!;
+    public IAuthService AuthService
+    {
+        get
+        {
+            _authService ??= new AuthService(_workUnit, _serviceProvider.GetRequiredService<IJwtProvider>());
+            return _authService;
         }
     }
 }

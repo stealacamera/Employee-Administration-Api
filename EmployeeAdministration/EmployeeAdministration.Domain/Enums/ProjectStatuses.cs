@@ -5,8 +5,8 @@ namespace EmployeeAdministration.Domain.Enums;
 public abstract class ProjectStatuses : SmartEnum<ProjectStatuses, sbyte>
 {
     public static readonly ProjectStatuses InProgress = new InProgressStatus(),
-                                         Paused = new PausedStatus(),
-                                         Finished = new FinishedStatus();
+                                           Paused = new PausedStatus(),
+                                           Finished = new FinishedStatus();
 
     private static readonly Dictionary<sbyte, ProjectStatuses> _fromId = new()
     {
@@ -22,6 +22,8 @@ public abstract class ProjectStatuses : SmartEnum<ProjectStatuses, sbyte>
 
     public abstract sbyte Id { get; }
 
+
+    // Enum instances
     private sealed class InProgressStatus : ProjectStatuses
     {
         public InProgressStatus() : base("In progress", 0) { }

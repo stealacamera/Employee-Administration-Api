@@ -83,7 +83,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task DoesUserExist_UserExists_ReturnsTrue(User user)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.DoesUserExistAsync(user.Id);
         Assert.True(result);
@@ -94,7 +94,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task DoesUserExistExcludeDeleted_UserIsSoftDeleted_ReturnsFalse(User user)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.DoesUserExistAsync(user.Id, includeDeletedUsers: false);
         Assert.False(result);
@@ -105,7 +105,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task DoesUserExistIncludeDeleted_UserIsSoftDeleted_ReturnsTrue(User user)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.DoesUserExistAsync(user.Id, includeDeletedUsers: true);
         Assert.True(result);
@@ -115,7 +115,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task DoesUserExist_UserDoesntExist_ReturnsFalse()
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.DoesUserExistAsync(ushort.MaxValue);
         Assert.False(result);
@@ -126,7 +126,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetAllAsync_ExcludeDeleted_ReturnsUndeletedUsers(Roles? role, User[] expectedResult)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.GetAllAsync(includeDeletedUsers: false, filterByRole: role);
         var resultIds = result.Select(e => e.Id).ToArray();
@@ -142,7 +142,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetAllAsync_IncludeDeleted_ReturnsUndeletedUsers(Roles? role, User[] expectedResult)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.GetAllAsync(includeDeletedUsers: true, filterByRole: role);
         var resultIds = result.Select(e => e.Id).ToArray();
@@ -158,7 +158,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task IsEmailInUse_UserExists_ReturnsTrue(User user)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.IsEmailInUseAsync(user.Email!);
         Assert.True(result);
@@ -168,7 +168,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task IsEmailInUse_UserDoesntExist_ReturnsFalse()
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.IsEmailInUseAsync("nonexistinguser@email.com");
         Assert.False(result);
@@ -179,7 +179,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task IsEmailInUseIncludeDeleted_UserIsSoftDeleted_ReturnsTrue(User user)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.IsEmailInUseAsync(user.Email!, includeDeletedUsers: true);
         Assert.True(result);
@@ -190,7 +190,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task IsEmailInUseExcludeDeleted_UserIsSoftDeleted_ReturnsFalse(User user)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.IsEmailInUseAsync(user.Email!, includeDeletedUsers: false);
         Assert.False(result);
@@ -202,7 +202,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetByEmail_ExcludeDeleted_GetExistingUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.GetByEmailAsync(user.Email!, excludeDeletedUser: true);
         Assert.Equal(expectedUser?.Id, result?.Id);
@@ -214,7 +214,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetByEmail_IncludeDeleted_GetAllUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.GetByEmailAsync(user.Email!, excludeDeletedUser: false);
         Assert.Equal(expectedUser?.Id, result?.Id);
@@ -224,7 +224,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetById_NonexistingUser_ReturnsNull()
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         Assert.Null(await _repository.GetByIdAsync(ushort.MaxValue));
     }
@@ -235,7 +235,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetById_ExcludeDeletedUsers_ReturnsExistingUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.GetByIdAsync(user.Id);
         Assert.Equal(expectedUser?.Id, result?.Id);
@@ -247,7 +247,7 @@ public class TestUsersRepository : BaseTestRepository
     public async Task GetById_IncludeDeletedUsers_ReturnsAllUsers(User user, User? expectedUser)
     {
         using var context = CreateContext();
-        _repository = new UsersRepository(_userManager, _distributedCache);
+        _repository = new UsersRepository(_userManager);
 
         var result = await _repository.GetByIdAsync(user.Id, excludeDeletedUser: false);
         Assert.Equal(expectedUser?.Id, result?.Id);

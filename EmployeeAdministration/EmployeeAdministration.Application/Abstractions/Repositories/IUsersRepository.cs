@@ -26,10 +26,6 @@ public interface IUsersRepository
     Task<bool> IsEmailInUseAsync(string email, bool includeDeletedUsers = false, CancellationToken cancellationToken = default);
     Task<bool> DoesUserExistAsync(int id, bool includeDeletedUsers = false, CancellationToken cancellationToken = default);
 
-    Task<Roles> GetUserRoleAsync(User user, CancellationToken cancellationToken = default);
-    Task AddToRoleAsync(User user, Roles role, CancellationToken cancellationToken = default);
-    Task<bool> IsUserInRoleAsync(User user, Roles role, CancellationToken cancellationToken = default);
-
     Task<bool> IsPasswordCorrectAsync(User user, string password, CancellationToken cancellationToken = default);
     Task UpdatePassword(User user, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
 }

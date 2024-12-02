@@ -7,9 +7,7 @@ namespace EmployeeAdministration.Infrastructure.Repositories;
 
 internal class ProjectMembersRepository : BaseRepository<ProjectMember>, IProjectMembersRepository
 {
-    public ProjectMembersRepository(AppDbContext dbContext) : base(dbContext)
-    {
-    }
+    public ProjectMembersRepository(AppDbContext dbContext) : base(dbContext) { }
 
     public async Task DeleteAllForProjectAsync(int projectId, CancellationToken cancellationToken = default)
         => await _set.Where(e => e.ProjectId == projectId)

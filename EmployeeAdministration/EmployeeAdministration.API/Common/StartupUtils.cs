@@ -1,7 +1,6 @@
 ﻿using System.Text.Json.Serialization;
-using Ardalis.SmartEnum;
+using Ardalis.SmartEnum.SystemTextJson;
 using EmployeeAdministration.Application.Abstractions;
-using EmployeeAdministration.Application.Common;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Domain.Enums;
 using EmployeeAdministration.Infrastructure;
@@ -9,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Task = System.Threading.Tasks.Task;
@@ -28,8 +28,8 @@ internal static class StartupUtils
     public static void RegisterJsonConverters(JsonOptions options)
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        //options.JsonSerializerOptions.Converters.Add(new SmartEnumNameConverter)
-        options.JsonSerializerOptions.Converters.Add(new ProjectStatusesJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new SmartEnumNameConverter<ProjectStatuses, sbyte>());
+        //options.JsonSerializerOptions.Converters.Add(new ProjectStatusesJsonConverter());
     }
 
     public static async Task SeedAdmin(this IServiceProvider serviceProvider)
@@ -72,6 +72,13 @@ internal static class StartupUtils
         //    var groupName = apiDescription.ActionDescriptor.RouteValues["controller"];
         //    return groupName.ToLower() == docName.ToLower();
         //});
+
+        options.MapType<ProjectStatuses>(() =>
+            new OpenApiSchema
+            {
+                Type = "string",
+                Enum = ProjectStatuses.List.Select(e => new OpenApiString(e.Name)).ToArray()
+            });
 
         // Add JWT authentication
         options.AddSecurityDefinition(

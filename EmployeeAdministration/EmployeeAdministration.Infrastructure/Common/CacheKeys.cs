@@ -1,4 +1,4 @@
-﻿namespace EmployeeAdministration.Infrastructure;
+﻿namespace EmployeeAdministration.Infrastructure.Common;
 
 internal static class CacheKeys
 {

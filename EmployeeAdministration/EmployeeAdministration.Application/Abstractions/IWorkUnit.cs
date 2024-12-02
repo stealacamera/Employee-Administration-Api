@@ -9,6 +9,7 @@ public interface IWorkUnit
     Task<IDbContextTransaction> BeginTransactionAsync();
 
     IUsersRepository UsersRepository { get; }
+    IUserRolesRepository UserRolesRepository { get; }
     IProjectsRepository ProjectsRepository { get; }
     IProjectMembersRepository ProjectMembersRepository { get; }
     ITasksRepository TasksRepository { get; }

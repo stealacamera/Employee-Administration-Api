@@ -1,7 +1,9 @@
 ﻿using EmployeeAdministration.Application.Common.Validation;
+using EmployeeAdministration.Application.Common.Validation.ValidationAttributes;
 using EmployeeAdministration.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
+using FileExtensionsAttribute = EmployeeAdministration.Application.Common.Validation.ValidationAttributes.FileExtensionsAttribute;
 
 namespace EmployeeAdministration.Application.Common.DTOs;
 
@@ -44,30 +46,17 @@ public record CreateUserRequest(
      RegularExpression(ValidationUtils.PasswordRegex, ErrorMessage = ValidationUtils.PasswordRegexErrorMessage)] 
     string Password, 
     
-    [MaxFileSize(ValidationUtils.MaxImageSize), 
-     FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)] 
+    [MaxFileSize(ValidationUtils.MaxImageBytes), 
+     FileExtensions(ValidationUtils.AcceptableFileExtensions)] 
     IFormFile? ProfilePicture = null);
 
-public record UpdateUserRequest
-{
-    [StringLength(ValidationUtils.UserNameLength)]
-    public string? FirstName { get; private set; } = null;
+public record UpdateUserRequest(
+    [StringLength(ValidationUtils.UserNameLength)] string? FirstName = null,
+    [StringLength(ValidationUtils.UserNameLength)] string? Surname = null,
 
-    [StringLength(ValidationUtils.UserNameLength)]
-    public string? LastName { get; private set; } = null;
-
-    [MaxFileSize(ValidationUtils.MaxImageSize)]
-    [FileExtensions(Extensions = ValidationUtils.AcceptableFileExtensions)]
-    public IFormFile? ProfilePicture { get; private set; } = null;
-
-    public UpdateUserRequest(string? firstName = null, string? lastName = null, IFormFile? profilePicture = null)
-    {
-        ProfilePicture = profilePicture;
-
-        FirstName = string.IsNullOrWhiteSpace(firstName) ? null : firstName.Trim();
-        LastName = string.IsNullOrWhiteSpace(lastName) ? null : lastName.Trim();
-    }
-}
+    [MaxFileSize(ValidationUtils.MaxImageBytes),
+     FileExtensions(ValidationUtils.AcceptableFileExtensions)]
+    IFormFile? ProfilePicture = null);
 
 public record UpdatePasswordRequest(
     [Required, StringLength(ValidationUtils.UserPasswordLength)] string CurrentPassword, 

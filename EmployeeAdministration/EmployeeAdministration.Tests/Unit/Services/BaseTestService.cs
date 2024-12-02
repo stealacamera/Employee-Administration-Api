@@ -94,8 +94,8 @@ public abstract class BaseTestService
 
         foreach (var (user, role) in userRoles)
         {
-            _mockWorkUnit.UsersRepository.GetUserRoleAsync(user).Returns(role);
-            _mockWorkUnit.UsersRepository.IsUserInRoleAsync(user, role).Returns(true);
+            _mockWorkUnit.UserRolesRepository.GetUserRoleAsync(user.Id).Returns(role);
+            _mockWorkUnit.UserRolesRepository.IsUserInRoleAsync(user.Id, role).Returns(true);
         }
     }
 

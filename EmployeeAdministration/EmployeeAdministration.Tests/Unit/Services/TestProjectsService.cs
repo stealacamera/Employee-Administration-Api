@@ -1,8 +1,9 @@
 ﻿using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
+using EmployeeAdministration.Application.Common.Exceptions.General;
 using EmployeeAdministration.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
-using ValidationException = EmployeeAdministration.Application.Common.Exceptions.ValidationException;
+using ValidationException = EmployeeAdministration.Application.Common.Exceptions.General.ValidationException;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
 

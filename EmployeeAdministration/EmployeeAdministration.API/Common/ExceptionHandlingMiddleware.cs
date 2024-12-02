@@ -1,5 +1,6 @@
 ﻿
 using EmployeeAdministration.Application.Common.Exceptions;
+using EmployeeAdministration.Application.Common.Exceptions.General;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
@@ -16,6 +17,7 @@ internal class ExceptionHandlingMiddleware : IMiddleware
         { typeof(UnauthorizedException), (StatusCodes.Status401Unauthorized, "Unauthorized") },
         { typeof(UncompletedTasksAssignedToEntityException), (StatusCodes.Status400BadRequest, "Unfinished tasks persisting") },
         { typeof(InvalidPasswordException), (StatusCodes.Status400BadRequest, "Incorrect password") },
+        { typeof(ExpiredRefreshTokenException), (StatusCodes.Status400BadRequest, "Expired tokens") },
     };
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)

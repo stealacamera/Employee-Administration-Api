@@ -1,4 +1,5 @@
 ﻿using EmployeeAdministration.Application.Common.Exceptions;
+using EmployeeAdministration.Application.Common.Exceptions.General;
 using EmployeeAdministration.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
@@ -31,7 +32,7 @@ public class TestProjectMembersService : BaseTestService
     [Fact]
     public async Task AddEmployeeToProject_ProjectDoesntExist_ThrowsError()
         => await Assert.ThrowsAsync<EntityNotFoundException>(
-            async () => await _service.AddEmployeeToProjectAsync(_nonMemberEmployee.Id, 0));
+            async () => await _service.AddEmployeesToProjectAsync([_nonMemberEmployee.Id], 0));
 
     [Theory]
     [MemberData(nameof(_invalidEmployeeArguments))]
@@ -39,21 +40,21 @@ public class TestProjectMembersService : BaseTestService
     public async Task AddEmployeeToProject_UserIsInvalid_ThrowsError(int employeeId, Type exceptionTypeExpected)
         => await Assert.ThrowsAsync(
                 exceptionTypeExpected, 
-                async () => await _service.AddEmployeeToProjectAsync(employeeId, _projectWithOpenTasks.Id));
+                async () => await _service.AddEmployeesToProjectAsync([employeeId], _projectWithOpenTasks.Id));
 
     [Fact]
     public async Task AddEmployeeToProject_ValidRequest_ReturnsProjectMember()
     {
-        var result = await _service.AddEmployeeToProjectAsync(_nonMemberEmployee.Id, _projectWithOpenTasks.Id);
+        var result = await _service.AddEmployeesToProjectAsync([_nonMemberEmployee.Id], _projectWithOpenTasks.Id);
 
-        Assert.Equal(_nonMemberEmployee.Id, result.Employee.Id);
-        Assert.Equal(_projectWithOpenTasks.Id, result.Project.Id);
+        Assert.Equal(_nonMemberEmployee.Id, result[0].Employee.Id);
+        Assert.Equal(_projectWithOpenTasks.Id, result[0].Project.Id);
     }
 
     [Fact]
     public async Task RemoveEmployeeFromProject_ProjectDoesntExist_ThrowsError()
         => await Assert.ThrowsAsync<EntityNotFoundException>(
-                async () => await _service.RemoveEmployeeFromProjectAsync(_nonMemberEmployee.Id, _nonExistingEntityId));
+                async () => await _service.RemoveEmployeesFromProjectAsync([_nonMemberEmployee.Id], _nonExistingEntityId));
 
     [Theory]
     [MemberData(nameof(_invalidEmployeeArguments))]
@@ -61,13 +62,13 @@ public class TestProjectMembersService : BaseTestService
     public async Task RemoveEmployeeFromProject_UserIsInvalid_ThrowsError(int employeeId, Type exceptionTypeExpected)
         => await Assert.ThrowsAsync(
                 exceptionTypeExpected,
-                async () => await _service.RemoveEmployeeFromProjectAsync(employeeId, _projectWithOpenTasks.Id));
+                async () => await _service.RemoveEmployeesFromProjectAsync([employeeId], _projectWithOpenTasks.Id));
 
     [Fact]
     public async Task RemoveEmployeeFromProject_ValidRequest_RemovesMember()
     {
         var result = await Record.ExceptionAsync(async () => 
-            await _service.RemoveEmployeeFromProjectAsync(_memberEmployee.Id, _projectWithCompletedTasks.Id));
+            await _service.RemoveEmployeesFromProjectAsync([_memberEmployee.Id], _projectWithCompletedTasks.Id));
         
         Assert.Null(result);
     }

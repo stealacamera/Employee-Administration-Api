@@ -5,23 +5,17 @@ using EmployeeAdministration.Infrastructure.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace EmployeeAdministration.Infrastructure;
+namespace EmployeeAdministration.Infrastructure.Services.Utils;
 
-internal class ImagesService : IImagesService
+internal class ImagesStorageService : IImagesStorageService
 {
     private readonly Cloudinary _cloudinary;
 
-    public ImagesService(IOptions<CloudinaryOptions> options)
+    public ImagesStorageService(IOptions<CloudinaryOptions> options)
     {
         var cloudinaryOptions = options.Value;
-
-        var account = new Account
-        {
-            ApiKey = cloudinaryOptions.ApiKey,
-            ApiSecret = cloudinaryOptions.ApiSecret,
-            Cloud = cloudinaryOptions.Name
-        };
-
+        Account account = new(cloudinaryOptions.Name, cloudinaryOptions.ApiKey, cloudinaryOptions.ApiSecret);
+        
         _cloudinary = new Cloudinary(account);
         _cloudinary.Api.Secure = true;
     }
@@ -32,13 +26,14 @@ internal class ImagesService : IImagesService
             throw new ArgumentException("Empty file");
 
         var uploadParams = new ImageUploadParams { UseFilename = false };
+        ImageUploadResult result;
 
         using (var fileStream = file.OpenReadStream())
         {
             uploadParams.File = new FileDescription(file.FileName, fileStream);
+            result = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
         }
 
-        var result = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
         return result.PublicId;
     }
 

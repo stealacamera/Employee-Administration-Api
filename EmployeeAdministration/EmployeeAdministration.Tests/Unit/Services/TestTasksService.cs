@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
+using EmployeeAdministration.Application.Common.Exceptions.General;
 using EmployeeAdministration.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 

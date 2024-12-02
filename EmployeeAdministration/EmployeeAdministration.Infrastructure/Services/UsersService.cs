@@ -3,19 +3,21 @@ using EmployeeAdministration.Application.Abstractions.Interfaces;
 using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
+using EmployeeAdministration.Application.Common.Exceptions.General;
 using EmployeeAdministration.Domain.Enums;
+using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Infrastructure.Services;
 
 internal class UsersService : BaseService, IUsersService
 {
     private readonly IJwtProvider _jwtProvider;
-    private readonly IImagesService _imagesService;
+    private readonly IImagesStorageService _imagesService;
 
     public UsersService(
-        IWorkUnit workUnit, 
-        IJwtProvider jwtProvider, 
-        IImagesService imagesService) 
+        IWorkUnit workUnit,
+        IJwtProvider jwtProvider,
+        IImagesStorageService imagesService)
         : base(workUnit)
     {
         _jwtProvider = jwtProvider;
@@ -25,7 +27,7 @@ internal class UsersService : BaseService, IUsersService
     public async Task<User> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
         // Check if the email is currently in use
-        if(await _workUnit.UsersRepository
+        if (await _workUnit.UsersRepository
                           .IsEmailInUseAsync(request.Email, includeDeletedUsers: true, cancellationToken))
             throw new ValidationException("Email", "Email is in use by an existing account");
 
@@ -48,30 +50,30 @@ internal class UsersService : BaseService, IUsersService
                     ProfilePictureName = profilePictureId
                 };
 
-                await _workUnit.UsersRepository
-                               .AddAsync(newUser, request.Password, cancellationToken);
+                await _workUnit.UsersRepository.AddAsync(newUser, request.Password, cancellationToken);
+                await _workUnit.SaveChangesAsync();
 
                 // Attach role to new user
-                await _workUnit.UsersRepository
-                               .AddToRoleAsync(newUser, request.Role, cancellationToken);
+                await _workUnit.UserRolesRepository.AddToRoleAsync(newUser.Id, request.Role, cancellationToken);
+                await _workUnit.SaveChangesAsync();
 
-                string? profilePictureUrl = profilePictureId != null ? 
-                                            await _imagesService.GetFileUrlAsync(profilePictureId, cancellationToken) : 
+                string? profilePictureUrl = profilePictureId != null ?
+                                            await _imagesService.GetFileUrlAsync(profilePictureId, cancellationToken) :
                                             null;
 
                 return new User(
-                    newUser.Id, newUser.Email, 
-                    newUser.FirstName, newUser.Surname, 
+                    newUser.Id, newUser.Email,
+                    newUser.FirstName, newUser.Surname,
                     request.Role, profilePictureUrl);
-            }, 
+            },
             async () =>
             {
-                if(profilePictureId != null)
+                if (profilePictureId != null)
                     await _imagesService.DeleteFileAsync(profilePictureId, cancellationToken);
             });
     }
 
-    public async System.Threading.Tasks.Task DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await _workUnit.UsersRepository
                                   .GetByIdAsync(userId, cancellationToken: cancellationToken);
@@ -80,62 +82,49 @@ internal class UsersService : BaseService, IUsersService
             throw new EntityNotFoundException(nameof(User));
 
         // If user is an employee, check if there are open tasks assigned to user
-        bool isUserEmployee = await _workUnit.UsersRepository
-                                             .IsUserInRoleAsync(user, Roles.Employee, cancellationToken);
+        bool isUserEmployee = await _workUnit.UserRolesRepository
+                                             .IsUserInRoleAsync(user.Id, Roles.Employee, cancellationToken);
 
-        if(isUserEmployee && await _workUnit.TasksRepository
+        if (isUserEmployee && await _workUnit.TasksRepository
                                             .DoesUserHaveOpenTasksAsync(userId, cancellationToken: cancellationToken))
             throw new UncompletedTasksAssignedToEntityException(nameof(User));
 
         // Delete user & associated entities
         await WrapInTransactionAsync(async () =>
         {
-            if(isUserEmployee)
+            var profilePictureId = user.ProfilePictureName;
+
+            if (isUserEmployee)
             {
-                await _workUnit.ProjectMembersRepository
-                               .DeleteAllForUserAsync(userId, cancellationToken);
-                
+                await _workUnit.ProjectMembersRepository.DeleteAllForUserAsync(userId, cancellationToken);
                 await _workUnit.SaveChangesAsync();
             }
-
-            if(user.ProfilePictureName != null)
-                await _imagesService.DeleteFileAsync(user.ProfilePictureName, cancellationToken);
 
             user.ProfilePictureName = null;
             user.DeletedAt = DateTime.UtcNow;
 
             await _workUnit.SaveChangesAsync();
+
+            if (profilePictureId != null)
+                await _imagesService.DeleteFileAsync(profilePictureId, cancellationToken);
         });
     }
 
     public async Task<IList<User>> GetAllAsync(
         Roles? filterByRole = null,
-        bool includeDeletedUsers = false, 
+        bool includeDeletedUsers = false,
         CancellationToken cancellationToken = default)
     {
         var users = await _workUnit.UsersRepository
                                    .GetAllAsync(includeDeletedUsers, filterByRole, cancellationToken);
 
-        return users.Select(async e => 
-                    {
-                        var userRole = await _workUnit.UsersRepository
-                                                .GetUserRoleAsync(e, cancellationToken);
-
-                        var profilePictureUrl = e.ProfilePictureName != null ? 
-                                                await _imagesService.GetFileUrlAsync(e.ProfilePictureName, cancellationToken) : 
-                                                null;
-
-                        return new User(
-                            e.Id, e.Email,
-                            e.FirstName, e.Surname,
-                            userRole, profilePictureUrl, e.DeletedAt);
-                    })
+        return users.Select(async e => await ConvertUserToModelAsync(e, cancellationToken))
                     .Select(e => e.Result)
                     .ToList();
     }
 
     public async Task<bool> DoesUserEmailExistAsync(
-        string email, 
+        string email,
         bool includeDeletedEntities = false,
         CancellationToken cancellationToken = default)
         => await _workUnit.UsersRepository
@@ -149,19 +138,21 @@ internal class UsersService : BaseService, IUsersService
         if (user == null)
             throw new UnauthorizedException();
 
-        var userRole = await _workUnit.UsersRepository
-                                      .GetUserRoleAsync(user, cancellationToken);
+        // Get user details
+        var userRole = await _workUnit.UserRolesRepository
+                                      .GetUserRoleAsync(user.Id, cancellationToken);
 
         var profilePictureId = user.ProfilePictureName != null ?
                                await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
                                null;
 
         var userModel = new User(
-            user.Id, user.Email, user.FirstName, user.Surname, 
+            user.Id, user.Email, user.FirstName, user.Surname,
             userRole, profilePictureId);
 
         var briefUser = new BriefUser(user.Id, user.Email, user.FirstName, user.Surname, user.DeletedAt);
 
+        // Get user projects and tasks
         var membershipProjectIds = (await _workUnit.ProjectMembersRepository
                                                    .GetAllForUserAsync(user.Id, cancellationToken))
                                                    .Select(e => e.ProjectId)
@@ -177,54 +168,56 @@ internal class UsersService : BaseService, IUsersService
     }
 
     public async Task<User> UpdateUserAsync(
-        int requesterId, 
-        int userId, 
-        UpdateUserRequest request, 
+        int requesterId,
+        int userId,
+        UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (request.ProfilePicture == null && request.FirstName == null && request.Surname == null)
+            ValidationException.GenerateExceptionForEmptyRequest();
+
         var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken: cancellationToken);
         var user = await _workUnit.UsersRepository.GetByIdAsync(userId, cancellationToken: cancellationToken);
 
-        if (requester == null)
-            throw new UnauthorizedException();
-        else if (user == null)
-            throw new EntityNotFoundException(nameof(User));
-
-        // Check if the user is an employee, they're updating themselves
-        bool isRequesterEmployee = await _workUnit.UsersRepository
-                                             .IsUserInRoleAsync(requester, Roles.Employee, cancellationToken);
-        
-        if (isRequesterEmployee && requester.Id != user.Id)
-            throw new UnauthorizedException();
+        await ValidateUpdateRequesterAsync(requester, user, cancellationToken);
 
         // Update user profile
-        if(request.FirstName != null)
-            user.FirstName = request.FirstName;
-        if(request.LastName != null)
-            user.Surname = request.LastName;
-        if (request.ProfilePicture != null)
+        await WrapInTransactionAsync(async () =>
         {
-            var profilePictureId = await _imagesService.SaveFileAsync(request.ProfilePicture, cancellationToken);
-            user.ProfilePictureName = profilePictureId;
-        }
+            var oldProfilePictureId = user.ProfilePictureName;
 
-        await _workUnit.SaveChangesAsync();
+            if (request.FirstName != null)
+                user.FirstName = request.FirstName;
+            if (request.Surname != null)
+                user.Surname = request.Surname;
+            if (request.ProfilePicture != null)
+            {
 
-        var userRole = await _workUnit.UsersRepository
-                                      .GetUserRoleAsync(user, cancellationToken);
+                var profilePictureId = await _imagesService.SaveFileAsync(request.ProfilePicture, cancellationToken);
+                user.ProfilePictureName = profilePictureId;
+            }
+
+            await _workUnit.SaveChangesAsync();
+        
+            if (oldProfilePictureId != null)
+                await _imagesService.DeleteFileAsync(oldProfilePictureId, cancellationToken);
+        });
+
+        var userRole = await _workUnit.UserRolesRepository
+                                      .GetUserRoleAsync(user.Id, cancellationToken);
 
         var profilePictureUrl = user.ProfilePictureName != null ?
                                 await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
                                 null;
 
         return new User(
-            user.Id, user.Email!, 
+            user.Id, user.Email!,
             user.FirstName, user.Surname,
             userRole, profilePictureUrl);
     }
 
     public async Task<LoggedInUser?> VerifyCredentialsAsync(
-        VerifyCredentialsRequest request, 
+        VerifyCredentialsRequest request,
         CancellationToken cancellationToken = default)
     {
         var user = await _workUnit.UsersRepository
@@ -235,23 +228,30 @@ internal class UsersService : BaseService, IUsersService
 
         var areCorrectCredentials = await _workUnit.UsersRepository
                                                    .VerifyCredentialsAsync(user, request.Password, cancellationToken);
-            
-        if(!areCorrectCredentials)
+
+        if (!areCorrectCredentials)
             return null;
 
-        var userRole = await _workUnit.UsersRepository
-                                      .GetUserRoleAsync(user, cancellationToken);
+        // Get user details
+        var userRole = await _workUnit.UserRolesRepository
+                                      .GetUserRoleAsync(user.Id, cancellationToken);
 
         var profilePictureUrl = user.ProfilePictureName != null ?
                                 await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
                                 null;
 
+        _jwtProvider.UpdateRefreshToken(user);
+        await _workUnit.SaveChangesAsync();
+
         return new LoggedInUser(
             new User(user.Id, user.Email, user.FirstName, user.Surname, userRole, profilePictureUrl),
-            new Tokens(_jwtProvider.GenerateToken(user.Id, user.Email), _jwtProvider.GenerateRefreshToken()));
+            new Tokens(_jwtProvider.GenerateToken(user.Id, user.Email), user.RefreshToken));
     }
 
-    public async System.Threading.Tasks.Task UpdatePasswordAsync(int requesterId, UpdatePasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task UpdatePasswordAsync(
+        int requesterId,
+        UpdatePasswordRequest request,
+        CancellationToken cancellationToken = default)
     {
         var requester = await _workUnit.UsersRepository.GetByIdAsync(requesterId, cancellationToken: cancellationToken);
 
@@ -273,6 +273,39 @@ internal class UsersService : BaseService, IUsersService
 
 
     // Helper functions
+    private async Task ValidateUpdateRequesterAsync(
+        Domain.Entities.User? requester,
+        Domain.Entities.User? user,
+        CancellationToken cancellationToken)
+    {
+        if (requester == null)
+            throw new UnauthorizedException();
+        else if (user == null)
+            throw new EntityNotFoundException(nameof(User));
+
+        // Check if the user is an employee, they're updating themselves
+        bool isRequesterEmployee = await _workUnit.UserRolesRepository
+                                                  .IsUserInRoleAsync(requester.Id, Roles.Employee, cancellationToken);
+
+        if (isRequesterEmployee && requester.Id != user.Id)
+            throw new UnauthorizedException();
+    }
+
+    private async Task<User> ConvertUserToModelAsync(Domain.Entities.User user, CancellationToken cancellationToken)
+    {
+        var userRole = await _workUnit.UserRolesRepository
+                                                .GetUserRoleAsync(user.Id, cancellationToken);
+
+        var profilePictureUrl = user.ProfilePictureName != null ?
+                                await _imagesService.GetFileUrlAsync(user.ProfilePictureName, cancellationToken) :
+                                null;
+
+        return new User(
+            user.Id, user.Email,
+            user.FirstName, user.Surname,
+            userRole, profilePictureUrl, user.DeletedAt);
+    }
+
     private async Task<Project> ConvertProjectToModelAsync(
         Domain.Entities.Project model,
         BriefUser user,
@@ -285,13 +318,13 @@ internal class UsersService : BaseService, IUsersService
                                 .Select(e => e.Result)
                                 .ToList();
 
-        return new Project(model.Id, model.Name, taskModels);
+        return new Project(model.Id, model.Name, ProjectStatuses.FromId(model.StatusId), taskModels);
 
     }
 
     private async Task<Application.Common.DTOs.Task> ConvertTaskToModelAsync(
-        Domain.Entities.Task model, 
-        BriefUser appointee, 
+        Domain.Entities.Task model,
+        BriefUser appointee,
         CancellationToken cancellationToken)
     {
         BriefUser? appointer = null;
@@ -305,8 +338,8 @@ internal class UsersService : BaseService, IUsersService
             if (appointerEntity == null)
                 throw new EntityNotFoundException(nameof(User));
 
-            var appointerRole = await _workUnit.UsersRepository
-                                          .GetUserRoleAsync(appointerEntity, cancellationToken);
+            var appointerRole = await _workUnit.UserRolesRepository
+                                               .GetUserRoleAsync(appointerEntity.Id, cancellationToken);
 
             appointer = new BriefUser(
                 appointerEntity.Id, appointerEntity.Email,

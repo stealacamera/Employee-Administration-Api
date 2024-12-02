@@ -1,5 +1,7 @@
-﻿using EmployeeAdministration.Domain.Enums;
-using EmployeeAdministration.Infrastructure;
+﻿using EmployeeAdministration.Application.Abstractions;
+using EmployeeAdministration.Domain.Enums;
+using EmployeeAdministration.Infrastructure.Services;
+using NSubstitute;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
 
@@ -26,7 +28,7 @@ public class TestAuthService : BaseTestService
     };
 
     public TestAuthService() : base()
-        => _service = new(_mockWorkUnit);
+        => _service = new(_mockWorkUnit, Substitute.For<IJwtProvider>());
 
     [Fact]
     public async Task IsUserAuthorized_NonexistingUser_ReturnsFalse()

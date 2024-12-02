@@ -6,7 +6,8 @@ using EmployeeAdministration.Infrastructure.Services;
 using EmployeeAdministration.Domain.Enums;
 using NSubstitute;
 using Task = System.Threading.Tasks.Task;
-using ValidationException = EmployeeAdministration.Application.Common.Exceptions.ValidationException;
+using ValidationException = EmployeeAdministration.Application.Common.Exceptions.General.ValidationException;
+using EmployeeAdministration.Application.Common.Exceptions.General;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
 
@@ -51,7 +52,7 @@ public class TestUsersService : BaseTestService
     };
 
     public TestUsersService() : base()
-        => _service = new(_mockWorkUnit, Substitute.For<IJwtProvider>(), Substitute.For<IImagesService>());
+        => _service = new(_mockWorkUnit, Substitute.For<IJwtProvider>(), Substitute.For<IImagesStorageService>());
 
     [Theory]
     [MemberData(nameof(_create_ExistingEmail_Arguments))]

@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using EmployeeAdministration.API.Common;
 using EmployeeAdministration.Infrastructure;
 
@@ -18,7 +17,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI();//opt => opt.SwaggerEndpoint("projects/swagger.json", "Projects"));
 }
 
 app.UseHttpsRedirection();

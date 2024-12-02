@@ -5,6 +5,6 @@ namespace EmployeeAdministration.Application.Abstractions.Services;
 
 public interface IProjectMembersService
 {
-    Task<ProjectMember> AddEmployeeToProjectAsync(int employeeId, int projectId, CancellationToken cancellationToken = default);
-    Task RemoveEmployeeFromProjectAsync(int employeeId, int projectId, CancellationToken cancellationToken = default);
+    Task<IList<ProjectMember>> AddEmployeesToProjectAsync(int[] employeeIds, int projectId, CancellationToken cancellationToken = default);
+    Task RemoveEmployeesFromProjectAsync(int[] employeeIds, int projectId, CancellationToken cancellationToken = default);
 }

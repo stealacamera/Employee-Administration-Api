@@ -7,6 +7,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace EmployeeAdministration.API.Controllers;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 //[ApiExplorerSettings(GroupName = "Identity")]
@@ -14,8 +15,7 @@ public class IdentityController : BaseController
 {
     public IdentityController(IServicesManager servicesManager) : base(servicesManager) { }
 
-    // TODO make password encrypted
-    // TODO add refresh tokens endpoint
+    [AllowAnonymous]
     [HttpPost("login")]
     [SwaggerOperation("Log in as user")]
     [SwaggerResponse(StatusCodes.Status200OK, type: typeof(LoggedInUser))]
@@ -35,7 +35,19 @@ public class IdentityController : BaseController
                });
     }
 
-    [Authorize]
+    [AllowAnonymous]
+    [HttpPost("tokens")]
+    [SwaggerOperation("Refresh JWT and refresh tokens")]
+    [SwaggerResponse(StatusCodes.Status200OK, type: typeof(Tokens))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Expired tokens, requester needs to log in again", type: typeof(ProblemDetails))]
+    public async Task<IActionResult> RefreshTokensAsync(Tokens expiredTokens, CancellationToken cancellationToken)
+    {
+        var refreshedTokens = await _servicesManager.AuthService
+                                                    .RefreshTokensAsync(expiredTokens, cancellationToken);
+        
+        return Ok(refreshedTokens);
+    }
+
     [HttpPut("password")]
     [SwaggerOperation("Update user's password")]
     [SwaggerResponse(StatusCodes.Status200OK, "Password updated successfully")]
@@ -51,11 +63,8 @@ public class IdentityController : BaseController
 
     [Authorize(Roles = nameof(Roles.Employee))]
     [HttpGet("profile")]
-    [SwaggerOperation(
-        "Retrieve information pertaining to the user", 
-        "Retrieve user's current information, the projects they're in and their tasks in each project")]
+    [SwaggerOperation("Retrieve user information", "Retrieve user's details, projects and their tasks in each project")]
     [SwaggerResponse(StatusCodes.Status200OK, type: typeof(UserProfile))]
-    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized access", type: typeof(ProblemDetails))]
     public async Task<IActionResult> GetUserProfileAsync(CancellationToken cancellationToken)
     {
         var profile = await _servicesManager.UsersService

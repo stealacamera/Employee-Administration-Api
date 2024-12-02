@@ -1,5 +1,7 @@
-﻿using EmployeeAdministration.Application.Abstractions;
+﻿using System.ComponentModel.DataAnnotations;
+using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Common.DTOs;
+using EmployeeAdministration.Application.Common.Validation;
 using EmployeeAdministration.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,14 +12,14 @@ namespace EmployeeAdministration.API.Controllers;
 [Authorize(Roles = nameof(Roles.Administrator))]
 [Route("api/[controller]")]
 [ApiController]
-//[ApiExplorerSettings(GroupName = "Projects")]
+//[ApiExplorerSettings(GroupName = "projects")]
 public class ProjectsController : BaseController
 {
     public ProjectsController(IServicesManager servicesManager) : base(servicesManager) { }
 
     [Authorize]
     [HttpGet("{id:int:min(1)}")]
-    [SwaggerOperation("Get particular project", "Projects can be accessed by administrators, or employees that are a part of the requested project")]
+    [SwaggerOperation("Get project instance", "Projects can be accessed by administrators, or employees that are project members")]
     [SwaggerResponse(StatusCodes.Status200OK, type: typeof(ComprehensiveProject))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Project could not be found")]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Requester could not be authorized, or they're not a part of the project")]
@@ -64,6 +66,7 @@ public class ProjectsController : BaseController
     [SwaggerResponse(StatusCodes.Status204NoContent)]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized access", typeof(ProblemDetails))]
     [SwaggerResponse(StatusCodes.Status400BadRequest, "Project has uncompleted tasks", typeof(ProblemDetails))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, type: typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteAsync(int id, CancellationToken cancellationToken)
     {
         await _servicesManager.ProjectsService
@@ -75,28 +78,34 @@ public class ProjectsController : BaseController
     // Project members
 
     [HttpPost("{projectId:int:min(1)}/members")]
-    [SwaggerOperation("Add an employee to a project")]
+    [SwaggerOperation("Add employee(s) to a project")]
     [SwaggerResponse(StatusCodes.Status201Created, type: typeof(ProjectMember))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized access", typeof(ProblemDetails))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Project and/or employee could not be found", typeof(ProblemDetails))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "User to be added is not an employee, or they're already a project member", typeof(ProblemDetails))]
-    public async Task<IActionResult> AddEmployeeToProjectAsync(int projectId, int employeeId, CancellationToken cancellationToken)
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "User(s) to be added is not an employee, or they're already a project member", typeof(ProblemDetails))]
+    public async Task<IActionResult> AddEmployeeToProjectAsync(
+        int projectId, 
+        [FromBody, MaxLength(ValidationUtils.MaxEmployeesPerTransaction)] int[] employeeIds, 
+        CancellationToken cancellationToken)
     {
         var member = await _servicesManager.ProjectMembersService
-                                           .AddEmployeeToProjectAsync(employeeId, projectId, cancellationToken);
+                                           .AddEmployeesToProjectAsync(employeeIds, projectId, cancellationToken);
 
         return Created(string.Empty, member);
     }
 
-    [HttpDelete("{projectId:int:min(1)}/members/{userId:int:min(1)}")]
-    [SwaggerOperation("Remove employee from project")]
+    [HttpDelete("{projectId:int:min(1)}/members")]
+    [SwaggerOperation("Remove employee(s) from project")]
     [SwaggerResponse(StatusCodes.Status204NoContent, "Project member removed succesfully")]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Project and/or member could not be found", typeof(ProblemDetails))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "User to be removed is not a member or they have open tasks assigned to them", typeof(ProblemDetails))]
-    public async Task<IActionResult> RemoveEmployeeFromProjectAsync(int projectId, int userId, CancellationToken cancellationToken)
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "User(s) to be removed is not a member or they have open tasks assigned to them", typeof(ProblemDetails))]
+    public async Task<IActionResult> RemoveEmployeeFromProjectAsync(
+        int projectId, 
+        [FromBody, MaxLength(ValidationUtils.MaxEmployeesPerTransaction)] int[] employeeIds, 
+        CancellationToken cancellationToken)
     {
         await _servicesManager.ProjectMembersService
-                              .RemoveEmployeeFromProjectAsync(userId, projectId, cancellationToken);
+                              .RemoveEmployeesFromProjectAsync(employeeIds, projectId, cancellationToken);
 
         return NoContent();
     }

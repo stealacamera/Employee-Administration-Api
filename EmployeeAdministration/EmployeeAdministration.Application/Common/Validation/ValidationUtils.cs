@@ -2,8 +2,8 @@
 
 public static class ValidationUtils
 {
-    public const string AcceptableFileExtensions = "jpg,jpeg,png,tiff";
-    public const int MaxImageSize = 2_000_000;
+    public const string AcceptableFileExtensions = ".jpg,.jpeg,.png";
+    public const int MaxImageBytes = 2_000_000;
 
     public const int UserNameLength = 100,
                      UserEmailLength = 80,
@@ -17,4 +17,6 @@ public static class ValidationUtils
 
     public const string PasswordRegex = @"^(?=.*\d)(?=.*[a-zA-Z]).{8,}$",
                         PasswordRegexErrorMessage = "Passwords require a minimum of 8 characters (letters and numbers)";
+
+    public const int MaxEmployeesPerTransaction = 100;
 }

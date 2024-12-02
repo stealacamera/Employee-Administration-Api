@@ -6,9 +6,7 @@ namespace EmployeeAdministration.Infrastructure.Repositories;
 
 internal class ProjectsRepository : Repository<Project>, IProjectsRepository
 {
-    public ProjectsRepository(AppDbContext dbContext) : base(dbContext)
-    {
-    }
+    public ProjectsRepository(AppDbContext dbContext) : base(dbContext) { }
 
     public async Task<IEnumerable<Project>> GetAllByIdsAsync(int[] ids, CancellationToken cancellationToken = default)
     {

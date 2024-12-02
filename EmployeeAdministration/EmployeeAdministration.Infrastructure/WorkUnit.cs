@@ -44,7 +44,7 @@ internal class WorkUnit : IWorkUnit
             return _projectMembersRepository;
         }
     }
-    
+
     private ITasksRepository _tasksRepository = null!;
     public ITasksRepository TasksRepository
     {
@@ -55,16 +55,28 @@ internal class WorkUnit : IWorkUnit
         }
     }
 
-    private Application.Abstractions.Repositories.IUsersRepository _usersRepository = null!;
-    public Application.Abstractions.Repositories.IUsersRepository UsersRepository
+    private IUsersRepository _usersRepository = null!;
+    public IUsersRepository UsersRepository
     {
         get
         {
-            _usersRepository ??= new Repositories.UsersRepository(
+            _usersRepository ??= new UsersRepository(
+                _serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>());
+
+            return _usersRepository;
+        }
+    }
+
+    private IUserRolesRepository _userRolesRepository = null!;
+    public IUserRolesRepository UserRolesRepository
+    {
+        get
+        {
+            _userRolesRepository ??= new UserRolesRepository(
                 _serviceProvider.GetRequiredService<UserManager<Domain.Entities.User>>(),
                 _serviceProvider.GetRequiredService<IDistributedCache>());
-            
-            return _usersRepository;
+
+            return _userRolesRepository;
         }
     }
 }

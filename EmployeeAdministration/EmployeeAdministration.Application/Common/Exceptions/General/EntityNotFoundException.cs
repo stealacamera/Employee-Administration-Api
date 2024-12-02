@@ -1,4 +1,4 @@
-﻿namespace EmployeeAdministration.Application.Common.Exceptions;
+﻿namespace EmployeeAdministration.Application.Common.Exceptions.General;
 
 public class EntityNotFoundException : BaseException
 {

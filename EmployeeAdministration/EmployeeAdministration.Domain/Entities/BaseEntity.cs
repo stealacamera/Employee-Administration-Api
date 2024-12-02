@@ -12,7 +12,7 @@ public abstract class BaseEntity
 public abstract class BaseEntity<TKey> : BaseEntity where TKey : IComparable<TKey>
 {
     [Key]
-    public TKey Id { get; set; }
+    public TKey Id { get; set; } = default!;
 }
 
 public abstract class Entity: BaseEntity<int>
