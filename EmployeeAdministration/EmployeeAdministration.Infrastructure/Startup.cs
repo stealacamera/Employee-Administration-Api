@@ -3,14 +3,18 @@ using EmployeeAdministration.Application.Abstractions.Services;
 using EmployeeAdministration.Application.Abstractions.Services.Utils;
 using EmployeeAdministration.Domain.Entities;
 using EmployeeAdministration.Infrastructure.Common;
+using EmployeeAdministration.Infrastructure.EventHandler.TaskCreated;
+using EmployeeAdministration.Infrastructure.Options;
 using EmployeeAdministration.Infrastructure.Options.Setups;
 using EmployeeAdministration.Infrastructure.Services;
 using EmployeeAdministration.Infrastructure.Services.Utils;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Serilog;
 using User = EmployeeAdministration.Domain.Entities.User;
 
@@ -30,23 +34,17 @@ public static class Startup
                 });
 
         builder.Services.AddAuthorization();
-        
-        builder.Services.ConfigureOptions<JwtOptionsSetup>();
-        builder.Services.ConfigureOptions<CloudinaryOptionsSetup>();
-        builder.Services.ConfigureOptions<JwtBearerOptionsSetup>();
+
+        builder.Services.RegisterOptions();
 
         builder.Services.AddStackExchangeRedisCache(
             options => options.Configuration = builder.Configuration.GetConnectionString("Redis"));
 
-        builder.RegisterInterfaces();
+        builder.Services.RegisterEmail(builder.Configuration);
+        builder.Services.RegisterMessageBroker();
 
-        // Register logger
-        Log.Logger = new LoggerConfiguration().ReadFrom
-                                              .Configuration(builder.Configuration)
-                                              .CreateLogger();
-
-        builder.Logging.AddSerilog(Log.Logger);
-        builder.Host.UseSerilog();
+        builder.Services.RegisterInterfaces();
+        builder.RegisterLogger();
     }
 
     private static void RegisterDb(this WebApplicationBuilder builder)
@@ -68,13 +66,65 @@ public static class Startup
                 .AddEntityFrameworkStores<AppDbContext>();
     }
 
-    private static void RegisterInterfaces(this WebApplicationBuilder builder)
+    private static void RegisterInterfaces(this IServiceCollection services)
     {
-        builder.Services.AddScoped<IJwtProvider, JwtProvider>();
+        services.AddTransient<IEmailService, EmailService>();
+        services.AddScoped<IJwtProvider, JwtProvider>();
+        services.AddTransient<IEventBus, EventBus>();
 
-        builder.Services.AddScoped<IImagesStorageService, ImagesStorageService>();
-        builder.Services.AddScoped<IWorkUnit, WorkUnit>();
-        builder.Services.AddScoped<IAuthService, AuthService>();
-        builder.Services.AddScoped<IServicesManager, ServicesManager>();
+        services.AddScoped<IImagesStorageService, ImagesStorageService>();
+        services.AddScoped<IWorkUnit, WorkUnit>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IServicesManager, ServicesManager>();
+    }
+
+    private static void RegisterOptions(this IServiceCollection services)
+    {
+        services.ConfigureOptions<CloudinaryOptionsSetup>();
+
+        services.ConfigureOptions<JwtOptionsSetup>();
+        services.ConfigureOptions<JwtBearerOptionsSetup>();
+
+        services.ConfigureOptions<EmailOptionsSetup>();
+        services.ConfigureOptions<MessageBrokerOptionsSetup>();
+    }
+
+    private static void RegisterEmail(this IServiceCollection services, IConfiguration configuration)
+    {
+        EmailOptions emailOptions = new();
+        configuration.GetSection(EmailOptions.SectionName).Bind(emailOptions);
+
+        services.AddFluentEmail(emailOptions.Email)
+                .AddSmtpSender(emailOptions.Host, emailOptions.Port, emailOptions.Email, emailOptions.Password);
+    }
+
+    private static void RegisterMessageBroker(this IServiceCollection services)
+    {
+        services.AddMassTransit(config =>
+        {
+            config.SetKebabCaseEndpointNameFormatter();
+            config.AddConsumers(typeof(TaskCreatedEventConsumer));
+
+            config.UsingRabbitMq((context, mqConfig) =>
+            {
+                var settings = context.GetRequiredService<IOptions<MessageBrokerOptions>>().Value;
+
+                mqConfig.Host(new Uri(settings.HostName), host =>
+                {
+                    host.Username(settings.Username);
+                    host.Password(settings.Password);
+                });
+            });
+        });
+    }
+
+    private static void RegisterLogger(this WebApplicationBuilder builder)
+    {
+        Log.Logger = new LoggerConfiguration().ReadFrom
+                                              .Configuration(builder.Configuration)
+                                              .CreateLogger();
+
+        builder.Logging.AddSerilog(Log.Logger);
+        builder.Host.UseSerilog();
     }
 }

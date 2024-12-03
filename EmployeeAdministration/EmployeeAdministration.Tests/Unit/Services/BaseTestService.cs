@@ -156,6 +156,7 @@ public abstract class BaseTestService
         foreach (var user in new[] { _memberEmployee, _nonMemberEmployee, _admin })
         {
             _mockWorkUnit.UsersRepository.GetByIdAsync(user.Id).Returns(user);
+            _mockWorkUnit.UsersRepository.GetByIdAsync(user.Id, excludeDeletedUser: false).Returns(user);
             _mockWorkUnit.UsersRepository.DoesUserExistAsync(user.Id).Returns(true);
             _mockWorkUnit.UsersRepository.IsEmailInUseAsync(user.Email, includeDeletedUsers: false).Returns(true);
             _mockWorkUnit.UsersRepository.IsEmailInUseAsync(user.Email, includeDeletedUsers: true).Returns(true);

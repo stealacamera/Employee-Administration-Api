@@ -57,7 +57,7 @@ internal class ServicesManager : IServicesManager
     {
         get
         {
-            _tasksService ??= new TasksService(_workUnit);
+            _tasksService ??= new TasksService(_workUnit, _serviceProvider.GetRequiredService<IEventBus>());
             return _tasksService;
         }
     }

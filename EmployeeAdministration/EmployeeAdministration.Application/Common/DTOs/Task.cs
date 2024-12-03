@@ -13,8 +13,8 @@ public record Task(
     [StringLength(ValidationUtils.TaskDescriptionLength)] string? Description = null);
 
 public record CreateTaskRequest(
-    [Required, Range(1, int.MaxValue)] int AppointeeId,
     [Required, StringLength(ValidationUtils.TaskNameLength)] string Name,
+    [Range(1, int.MaxValue)] int? AppointeeId = null,
     [StringLength(ValidationUtils.TaskDescriptionLength)] string? Description = null);
 
 public record UpdateTaskRequest(

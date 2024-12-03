@@ -1,8 +1,10 @@
 ﻿using Azure.Core;
+using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Application.Common.Exceptions.General;
 using EmployeeAdministration.Infrastructure.Services;
+using NSubstitute;
 using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.Tests.Unit.Services;
@@ -11,7 +13,7 @@ public class TestTasksService : BaseTestService
 {
     private readonly TasksService _service;
     private readonly UpdateTaskRequest _dummyUpdateRequest = new("Test name");
-    private readonly CreateTaskRequest _dummyCreateRequest = new(_memberEmployee.Id, "Test name");
+    private readonly CreateTaskRequest _dummyCreateRequest = new("Test name", _memberEmployee.Id);
 
     public static readonly IEnumerable<object[]> 
         _invalidUsersArguments = new List<object[]>
@@ -39,7 +41,7 @@ public class TestTasksService : BaseTestService
     };
 
     public TestTasksService() : base()
-        => _service = new TasksService(_mockWorkUnit);
+        => _service = new TasksService(_mockWorkUnit, Substitute.For<IEventBus>());
 
     [Theory]
     [MemberData(nameof(_invalidUsersArguments))]
@@ -51,7 +53,7 @@ public class TestTasksService : BaseTestService
     [MemberData(nameof(_create_InvalidAppointee_Arguments))]
     public async Task Create_AppointeeIsInvalid_ThrowsError(int appointeeId, Type exceptionExpected)
     {
-        var request = new CreateTaskRequest(appointeeId, "Test name");
+        var request = new CreateTaskRequest("Test name", appointeeId);
 
         await Assert.ThrowsAsync(
                 exceptionExpected,

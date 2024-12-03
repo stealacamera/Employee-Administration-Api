@@ -10,7 +10,7 @@ namespace EmployeeAdministration.API.Controllers;
 [Authorize]
 [Route("api/[controller]")]
 [ApiController]
-//[ApiExplorerSettings(GroupName = "Tasks")]
+[ApiExplorerSettings(GroupName = "Tasks")]
 public class TasksController : BaseController
 {
     public TasksController(IServicesManager servicesManager) : base(servicesManager)

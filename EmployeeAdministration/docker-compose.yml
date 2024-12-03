@@ -32,3 +32,15 @@ services:
     restart: always
     ports:
         - "6379:6379"
+
+  employeeadministration.mq:
+    image: rabbitmq:4.0.4-management
+    container_name: employeeadministration.mq
+    hostname: employeeadministration-mq
+    volumes:
+        - ./.containers/employeeadministration-mq/data:/var/lib/rabbitmq
+        - ./.containers/employeeadministration-mq/log:/var/log/rabbitmq
+        - ./.rabbit/enabled_plugins.txt:/etc/rabbitmq/enabled_plugins
+    ports:
+        - 15672:15672
+        - 5672:5672

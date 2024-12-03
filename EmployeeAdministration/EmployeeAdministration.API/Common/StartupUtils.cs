@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Globalization;
+using System.Text.Json.Serialization;
 using Ardalis.SmartEnum.SystemTextJson;
 using EmployeeAdministration.Application.Abstractions;
 using EmployeeAdministration.Application.Common.DTOs;
@@ -11,25 +12,29 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using Swashbuckle.AspNetCore.SwaggerUI;
 using Task = System.Threading.Tasks.Task;
 
 namespace EmployeeAdministration.API.Common;
 
 internal static class StartupUtils
 {
+    private static string[] _apiGroups = ["Identity", "Projects", "Tasks", "Users"];
+
     public static void RegisterUtils(this IServiceCollection services)
     {
         services.AddSwaggerGen(RegisterSwagger);
 
         services.AddTransient<ExceptionHandlingMiddleware>();
         services.AddSingleton<IAuthorizationHandler, CustomRoleAuthorizationHandler>();
+
+        services.AddRouting(options => options.LowercaseUrls = true);
     }
 
     public static void RegisterJsonConverters(JsonOptions options)
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         options.JsonSerializerOptions.Converters.Add(new SmartEnumNameConverter<ProjectStatuses, sbyte>());
-        //options.JsonSerializerOptions.Converters.Add(new ProjectStatusesJsonConverter());
     }
 
     public static async Task SeedAdmin(this IServiceProvider serviceProvider)
@@ -41,7 +46,6 @@ internal static class StartupUtils
 
             if (!await servicesManager.UsersService.DoesUserEmailExistAsync(adminEmail, includeDeletedEntities: true))
             {
-                // TODO move details to appsettings?
                 var adminRequest = new CreateUserRequest(
                     Roles.Administrator, adminEmail,
                     "Admin", "Admin", "base//admin12password");
@@ -67,11 +71,9 @@ internal static class StartupUtils
     {
         options.EnableAnnotations();
 
-        //options.DocInclusionPredicate((docName, apiDescription) =>
-        //{
-        //    var groupName = apiDescription.ActionDescriptor.RouteValues["controller"];
-        //    return groupName.ToLower() == docName.ToLower();
-        //});
+        // Register groups
+        foreach (var group in _apiGroups)
+            options.SwaggerDoc(group, new OpenApiInfo { Title = group, Version = "v1" });
 
         options.MapType<ProjectStatuses>(() =>
             new OpenApiSchema
@@ -102,5 +104,11 @@ internal static class StartupUtils
                 new string[] {}
             }
         });
+    }
+
+    internal static void RegisterSwaggerGroups(SwaggerUIOptions options)
+    {
+        foreach (var group in _apiGroups)
+            options.SwaggerEndpoint($"/swagger/{group}/swagger.json", $"{group} API");
     }
 }

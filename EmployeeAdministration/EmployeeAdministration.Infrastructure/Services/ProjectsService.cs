@@ -74,7 +74,7 @@ internal class ProjectsService : BaseService, IProjectsService
         if(project == null)
             throw new EntityNotFoundException(nameof(Project));
         
-        await ValidateRequesterIsAdminOrProejctMember(requesterId, project.Id, cancellationToken);
+        await ValidateRequesterIsAdminOrProjectMember(requesterId, project.Id, cancellationToken);
 
         return new ComprehensiveProject(
             project.Id, project.Name, ProjectStatuses.FromId(project.StatusId),
@@ -110,7 +110,7 @@ internal class ProjectsService : BaseService, IProjectsService
 
 
     // Helper functions
-    private async System.Threading.Tasks.Task ValidateRequesterIsAdminOrProejctMember(
+    private async System.Threading.Tasks.Task ValidateRequesterIsAdminOrProjectMember(
         int requesterId,
         int projectId,
         CancellationToken cancellationToken)

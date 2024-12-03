@@ -4,28 +4,33 @@ using EmployeeAdministration.Application.Common.DTOs;
 using EmployeeAdministration.Application.Common.Exceptions;
 using EmployeeAdministration.Application.Common.Exceptions.General;
 using EmployeeAdministration.Domain.Enums;
+using EmployeeAdministration.Infrastructure.EventHandler.TaskCreated;
 using Task = EmployeeAdministration.Application.Common.DTOs.Task;
 
 namespace EmployeeAdministration.Infrastructure.Services;
 
 internal class TasksService : BaseService, ITasksService
 {
-    public TasksService(IWorkUnit workUnit) : base(workUnit) { }
+    private readonly IEventBus _eventBus;
+
+    public TasksService(IWorkUnit workUnit, IEventBus eventBus) : base(workUnit)
+        => _eventBus = eventBus;
 
     public async Task<Task> CreateAsync(int requesterId, int projectId, CreateTaskRequest request, CancellationToken cancellationToken = default)
     {
         bool isTaskSelfAssigned = requesterId == request.AppointeeId;
-        var requester = await ValidateRequesterIsAdminOrInProjectAsync(requesterId, projectId, cancellationToken);        
-        
-        if (!await _workUnit.ProjectsRepository.DoesInstanceExistAsync(projectId, cancellationToken))
+        var requester = await ValidateRequesterIsAdminOrInProjectAsync(requesterId, projectId, cancellationToken);
+        var project = await _workUnit.ProjectsRepository.GetByIdAsync(projectId, cancellationToken);
+
+        if (project == null)
             throw new EntityNotFoundException(nameof(Project));
 
-        var appointee = await ValidateAppointeeToCreateTaskAsync(request.AppointeeId, projectId, isTaskSelfAssigned, cancellationToken);
+        var appointee = await ValidateAppointeeToCreateTaskAsync(request.AppointeeId ?? requesterId, projectId, isTaskSelfAssigned, cancellationToken);
 
         // Add new task
         var newTask = new Domain.Entities.Task
         {
-            AppointeeEmployeeId = request.AppointeeId,
+            AppointeeEmployeeId = appointee.Id,
             AppointerUserId = requesterId,
             Name = request.Name,
             Description = request.Description,
@@ -36,6 +41,13 @@ internal class TasksService : BaseService, ITasksService
 
         await _workUnit.TasksRepository.AddAsync(newTask, cancellationToken);
         await _workUnit.SaveChangesAsync();
+
+        //await _eventBus.PublishAsync(
+        //        new TaskCreatedEvent(
+        //            newTask.Id, newTask.Name, 
+        //            project.Id, project.Name, 
+        //            appointee.Id, appointee.Email!, 
+        //            newTask.Description));
 
         return new Task(
             newTask.Id,

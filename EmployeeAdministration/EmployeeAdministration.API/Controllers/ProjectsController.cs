@@ -9,15 +9,14 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace EmployeeAdministration.API.Controllers;
 
-[Authorize(Roles = nameof(Roles.Administrator))]
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
-//[ApiExplorerSettings(GroupName = "projects")]
+[ApiExplorerSettings(GroupName = "Projects")]
 public class ProjectsController : BaseController
 {
     public ProjectsController(IServicesManager servicesManager) : base(servicesManager) { }
 
-    [Authorize]
     [HttpGet("{id:int:min(1)}")]
     [SwaggerOperation("Get project instance", "Projects can be accessed by administrators, or employees that are project members")]
     [SwaggerResponse(StatusCodes.Status200OK, type: typeof(ComprehensiveProject))]
@@ -31,6 +30,7 @@ public class ProjectsController : BaseController
         return Ok(project);
     }
 
+    [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpPost]
     [SwaggerOperation(
         "Create a new project (optionally, with members)", 
@@ -47,6 +47,7 @@ public class ProjectsController : BaseController
         return Created(string.Empty, newProject);
     }
 
+    [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpPatch("{id:int:min(1)}")]
     [SwaggerOperation("Update a project's properties")]
     [SwaggerResponse(StatusCodes.Status200OK, type: typeof(BriefProject))]
@@ -60,7 +61,7 @@ public class ProjectsController : BaseController
         return Ok(project);
     }
 
-    
+    [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpDelete("{id:int:min(1)}")]
     [SwaggerOperation("Delete a project")]
     [SwaggerResponse(StatusCodes.Status204NoContent)]
@@ -77,6 +78,7 @@ public class ProjectsController : BaseController
 
     // Project members
 
+    [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpPost("{projectId:int:min(1)}/members")]
     [SwaggerOperation("Add employee(s) to a project")]
     [SwaggerResponse(StatusCodes.Status201Created, type: typeof(ProjectMember))]
@@ -94,6 +96,7 @@ public class ProjectsController : BaseController
         return Created(string.Empty, member);
     }
 
+    [Authorize(Roles = nameof(Roles.Administrator))]
     [HttpDelete("{projectId:int:min(1)}/members")]
     [SwaggerOperation("Remove employee(s) from project")]
     [SwaggerResponse(StatusCodes.Status204NoContent, "Project member removed succesfully")]

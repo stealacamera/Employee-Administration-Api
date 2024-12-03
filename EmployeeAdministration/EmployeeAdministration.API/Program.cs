@@ -17,7 +17,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();//opt => opt.SwaggerEndpoint("projects/swagger.json", "Projects"));
+    app.UseSwaggerUI(StartupUtils.RegisterSwaggerGroups);
 }
 
 app.UseHttpsRedirection();

@@ -10,7 +10,7 @@ namespace EmployeeAdministration.API.Controllers;
 [Authorize]
 [Route("api/[controller]")]
 [ApiController]
-//[ApiExplorerSettings(GroupName = "Identity")]
+[ApiExplorerSettings(GroupName = "Identity")]
 public class IdentityController : BaseController
 {
     public IdentityController(IServicesManager servicesManager) : base(servicesManager) { }
